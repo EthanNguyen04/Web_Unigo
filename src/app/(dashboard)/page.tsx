@@ -1,6 +1,10 @@
+'use client';
+
 import { ShoppingCartIcon, CubeIcon, CurrencyDollarIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export default function Home() {
+  
+
   const stats = [
     { title: "Tổng đơn hàng", value: 1200, icon: ShoppingCartIcon },
     { title: "Sản phẩm có sẵn", value: 350, icon: CubeIcon },
