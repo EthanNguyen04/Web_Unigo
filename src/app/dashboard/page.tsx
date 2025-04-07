@@ -1,6 +1,13 @@
 'use client';
 
-import { ShoppingCartIcon, CubeIcon, CurrencyDollarIcon, UsersIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ShoppingCartIcon,
+  CubeIcon,
+  CurrencyDollarIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Home() {
   
