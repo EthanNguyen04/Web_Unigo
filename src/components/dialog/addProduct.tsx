@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import VariantBuilder, { Variant } from "./form/variantBuilder"; // Điều chỉnh đường dẫn nếu cần
 import { API_ADD_PRODUCT, API_ALL_CATEGORY } from "../../config";
 
-const AddProduct = () => {
+interface AddProductProps {
+    onClose: () => void;
+  }
+  
+const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [discount, setDiscount] = useState("");
@@ -14,7 +18,7 @@ const AddProduct = () => {
   const [imageSlots, setImageSlots] = useState<(File | null)[]>(Array(6).fill(null));
   const [message, setMessage] = useState("");
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Lấy danh mục từ API (danh mục là tùy chọn, không validate bắt buộc)
   useEffect(() => {
@@ -39,7 +43,7 @@ const AddProduct = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage("");
-
+    setIsSubmitting(true);
     // Chuyển variants thành JSON string
     const variantsJSON = JSON.stringify(variants);
 
@@ -62,10 +66,10 @@ const AddProduct = () => {
     try {
       const token = localStorage.getItem("tkn");
       if (!token) {
-        setMessage("Không tìm thấy token!");
+        setMessage("Không tìm thấy token! Vui lòng đăng nhập lại!");
+        setIsSubmitting(false);
         return;
       }
-      console.log("tới đây")
       const res = await fetch(API_ADD_PRODUCT, {
         method: "POST",
         headers: {
@@ -80,12 +84,16 @@ const AddProduct = () => {
         setMessage(data.message || "Có lỗi xảy ra khi thêm sản phẩm");
       } else {
         setMessage("Thêm sản phẩm thành công!");
-        // router.push("/manager/products"); // Chuyển hướng nếu cần
+        setTimeout(() => {
+            onClose();
+          }, 1000);
       }
     } catch (error: any) {
       setMessage("Lỗi: " + error.message);
       console.log(error.message)
-    }
+    } finally {
+        setIsSubmitting(false);
+      }
   };
 
   return (
@@ -184,8 +192,12 @@ const AddProduct = () => {
           <VariantBuilder onVariantsChange={(data) => setVariants(data)} />
         </div>
 
-        <button type="submit" className="bg-[#ff8000] text-white px-4 py-2 rounded">
-          Thêm sản phẩm mới
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-[#ff8000] text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {isSubmitting ? "Đang thêm sản phẩm..." : "Thêm sản phẩm mới"}
         </button>
       </form>
     </div>

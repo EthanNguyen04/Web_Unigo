@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import AddProduct from "../dialog/addProduct"; // Điều chỉnh đường dẫn nếu cần
 import { XMarkIcon } from "@heroicons/react/24/outline";
@@ -29,55 +29,24 @@ const ProductManagement = () => {
   const [uniqueCategories, setUniqueCategories] = useState<string[]>([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
 
-  // Hàm định dạng giá sang VND
-  const formatPrice = (priceStr: string) => {
-    const formatter = new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    });
-    if (priceStr.includes(" - ")) {
-      const parts = priceStr.split(" - ");
-      const num1 = Number(parts[0]);
-      const num2 = Number(parts[1]);
-      return `${formatter.format(num1)} - ${formatter.format(num2)}`;
-    } else {
-      const num = Number(priceStr);
-      return formatter.format(num);
+  // Hàm load danh sách sản phẩm
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(API_PRODUCT_MANAGER);
+      const data: APIResponse = await response.json();
+      setProducts(data.data);
+      // Tính danh sách danh mục duy nhất
+      const categories = Array.from(new Set(data.data.map((prod) => prod.category))) as string[];
+      setUniqueCategories(categories);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách sản phẩm:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Hàm chuyển đổi trạng thái sang tiếng Việt
-  const mapStatus = (status: string) => {
-    switch (status) {
-      case "dang_ban":
-        return "Đang bán";
-      case "het_hang":
-        return "Hết hàng";
-      case "ngung_ban":
-        return "Ngừng bán";
-      default:
-        return status;
-    }
-  };
-
-  // Lấy danh sách sản phẩm từ API
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch(API_PRODUCT_MANAGER);
-        const data: APIResponse = await response.json();
-        setProducts(data.data);
-        // Tính danh sách danh mục duy nhất từ các sản phẩm
-        const categories = Array.from(
-          new Set(data.data.map((prod: Product) => prod.category))
-        ) as string[];
-        setUniqueCategories(categories);
-        setLoading(false);
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách sản phẩm:", error);
-        setLoading(false);
-      }
-    };
     fetchProducts();
   }, []);
 
@@ -112,6 +81,37 @@ const ProductManagement = () => {
   // Hàm xử lý sửa thông tin sản phẩm
   const handleEditProduct = (id: string) => {
     alert(`Sửa thông tin sản phẩm có ID: ${id}`);
+  };
+
+  // Hàm định dạng giá sang VND
+  const formatPrice = (priceStr: string) => {
+    const formatter = new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    });
+    if (priceStr.includes(" - ")) {
+      const parts = priceStr.split(" - ");
+      const num1 = Number(parts[0]);
+      const num2 = Number(parts[1]);
+      return `${formatter.format(num1)} - ${formatter.format(num2)}`;
+    } else {
+      const num = Number(priceStr);
+      return formatter.format(num);
+    }
+  };
+
+  // Hàm chuyển đổi trạng thái sang tiếng Việt
+  const mapStatus = (status: string) => {
+    switch (status) {
+      case "dang_ban":
+        return "Đang bán";
+      case "het_hang":
+        return "Hết hàng";
+      case "ngung_ban":
+        return "Ngừng bán";
+      default:
+        return status;
+    }
   };
 
   if (loading) {
@@ -170,9 +170,7 @@ const ProductManagement = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border p-1 rounded w-64"
           />
-          <button className="bg-[#ff8000] text-white px-3 py-1 rounded">
-            Lọc
-          </button>
+          <button className="bg-[#ff8000] text-white px-3 py-1 rounded">Lọc</button>
         </div>
       </div>
 
@@ -235,22 +233,23 @@ const ProductManagement = () => {
       {showAddProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-opacity">
           <div className="relative w-[95%] bg-white p-6 rounded-lg shadow-lg overflow-auto">
-          <button
-            onClick={() => {
-              if (window.confirm("Bạn có chắc chắn muốn đóng?")) {
-                setShowAddProduct(false);
-              }
-            }}
-            className="absolute top-2 right-2 text-red-500 cursor-pointer transition-colors duration-200 hover:bg-red-700"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-              <AddProduct />
-            </div>
+            <button
+              onClick={() => {
+                if (window.confirm("Bạn có chắc chắn muốn đóng?")) {
+                  setShowAddProduct(false);
+                }
+              }}
+              className="absolute top-2 right-2 text-red-500 cursor-pointer transition-colors duration-200 hover:bg-red-700"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+            <AddProduct onClose={() => {
+              setShowAddProduct(false);
+              fetchProducts(); // Gọi hàm load lại sản phẩm sau khi thêm thành công
+            }} />
           </div>
-        )}
-
-
+        </div>
+      )}
     </div>
   );
 };
