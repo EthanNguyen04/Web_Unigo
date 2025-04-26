@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import VariantBuilder, { Variant } from "./form/variantBuilder"; // Điều chỉnh đường dẫn nếu cần
-import { API_ADD_PRODUCT, API_ALL_CATEGORY } from "../../config";
+import VariantBuilder, { Variant } from "./form/variantAdd"; // Điều chỉnh đường dẫn nếu cần
+import {BASE_URL, API_ADD_PRODUCT, API_Get_CATEGORY } from "../../config";
 
 interface AddProductProps {
     onClose: () => void;
@@ -11,8 +11,8 @@ interface AddProductProps {
 const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [discount, setDiscount] = useState("");
   const [description, setDescription] = useState("");
+  const [priceIn, setPriceIn] = useState(""); 
   const [variants, setVariants] = useState<Variant[]>([]);
   // Sử dụng state cho 6 slot ảnh, khởi tạo mảng 6 phần tử null
   const [imageSlots, setImageSlots] = useState<(File | null)[]>(Array(6).fill(null));
@@ -24,7 +24,7 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(API_ALL_CATEGORY);
+        const res = await fetch(API_Get_CATEGORY);
         const data = await res.json();
         setCategories(data.categories);
       } catch (error) {
@@ -52,8 +52,8 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
     formData.append("name", name);
     // Danh mục là tùy chọn, nên nếu không chọn sẽ gửi giá trị rỗng
     formData.append("category_id", categoryId);
-    formData.append("discount", discount);
     formData.append("description", description);
+    formData.append("priceIn", priceIn);                // <-- gửi giá nhập
     formData.append("variants", variantsJSON);
 
     // Thêm các file ảnh từ imageSlots (chỉ những file khác null)
@@ -166,17 +166,6 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
         </div>
 
         <div>
-          <label className="block font-semibold">Giảm giá (%):</label>
-          <input
-            type="number"
-            value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
-            className="w-full border p-2 rounded"
-            placeholder="Nhập phần trăm giảm giá (mặc định 0)"
-          />
-        </div>
-
-        <div>
           <label className="block font-semibold">Mô tả:</label>
           <textarea
             value={description}
@@ -184,6 +173,19 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
             className="w-full border p-2 rounded"
             required
           ></textarea>
+        </div>
+        <div>
+          <label className="block font-semibold">Giá nhập (VNĐ):</label>
+          <input
+            type="number"
+            min="0"
+            step="1000"
+            value={priceIn}
+            onChange={(e) => setPriceIn(e.target.value)}
+            className="w-full border p-2 rounded"
+            placeholder="Nhập giá nhập"
+            required
+          />
         </div>
 
         {/* Variant Builder */}
