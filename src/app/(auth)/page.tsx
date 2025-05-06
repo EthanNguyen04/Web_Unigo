@@ -150,7 +150,7 @@ export default function Login() {
     }
 
     try {
-      const res = await fetch("http://localhost:3001/api/user/login_admin", {
+      const res = await fetch(`${API_LOGIN}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

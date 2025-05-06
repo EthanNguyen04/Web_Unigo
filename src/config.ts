@@ -1,7 +1,7 @@
 // config.ts
 
 // Địa chỉ base của API
-export const BASE_URL = "http://192.168.1.9:3001";
+export const BASE_URL = "http://192.168.1.167:3001";
 
 // Các endpoint liên quan
 export const API_ADD_PRODUCT = `${BASE_URL}/manager/add_product`;
@@ -21,6 +21,13 @@ export const API_GET_Edit_PRODUCT = `${BASE_URL}/manager/get_product`;
 
 export const Post_ADD_category = `${BASE_URL}/manager/add_category`;
 export const Edit_category = `${BASE_URL}/manager/edit_category`;
+
+export const Add_Discount = `${BASE_URL}/manager/add_discount`;
+export const Get_All_Discount = `${BASE_URL}/manager/get_all_discounts`;
+
+export const Put_Edit_Discount = `${BASE_URL}/manager/update_discount`;
+
+export const Post_notification = `${BASE_URL}/manager/send-notification`;
 
 
 // Các biến/config khác có thể thêm vào đây
