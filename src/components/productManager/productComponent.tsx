@@ -186,7 +186,6 @@ const ProductManagement: React.FC = () => {
             onChange={e => setSearchQuery(e.target.value)}
             className="border p-1 rounded w-64"
           />
-          <button className="bg-[#ff8000] text-white px-3 py-1 rounded">Lọc</button>
         </div>
       </div>
 

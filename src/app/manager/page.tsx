@@ -76,6 +76,21 @@ const Sidebar = () => {
   const [name, setName]                 = useState<string>("");
   const router = useRouter();
 
+  // read role from localStorage
+    const [role, setRole] = useState<string | null>(null);
+
+  // read role on client only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const r = localStorage.getItem('role');
+      setRole(r);
+    }
+  }, []);
+  // filter menu: staff cannot see these
+  const filteredMenu = role === 'staff'
+    ? menuItems.filter(item => !['/','/stats','/users'].includes(item.path))
+    : menuItems;
+
   // Lấy tên user từ localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -160,7 +175,7 @@ const Sidebar = () => {
 
           {/* Menu items */}
           <nav className="flex flex-col">
-            {menuItems.map(item => (
+            {filteredMenu.map(item => (
               <button
                 key={item.path}
                 onClick={() => handleMenuClick(item.component, item.path)}
