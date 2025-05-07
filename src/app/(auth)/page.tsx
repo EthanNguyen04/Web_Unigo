@@ -25,6 +25,7 @@ export default function Login() {
   useEffect(() => {
     const checkToken = async () => {
       const tokenver = localStorage.getItem("tkn");
+      console.log(tokenver)
       if (tokenver) {
         const tokena = "Bearer " + tokenver;
         try {
@@ -150,7 +151,7 @@ export default function Login() {
     }
 
     try {
-      const res = await fetch("http://localhost:3001/api/user/login_admin", {
+      const res = await fetch(`${API_LOGIN}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -168,6 +169,7 @@ export default function Login() {
         localStorage.setItem("userEmail", email);
         localStorage.setItem("tkn", data.token);
         localStorage.setItem("name", data.fullname);
+        localStorage.setItem("role", data.role);
         router.replace("/manager");
       }
     } catch (error: unknown) {
