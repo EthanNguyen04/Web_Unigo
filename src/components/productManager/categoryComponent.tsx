@@ -128,43 +128,43 @@ const CategoryManagement: React.FC = () => {
     return true;
   });
 
-  if (loading) return <div>Đang tải phân loại...</div>;
-  if (error)   return <div className="text-red-600">Lỗi: {error}</div>;
+  if (loading) return <div className="text-center text-orange-600 font-semibold py-8">Đang tải phân loại...</div>;
+  if (error)   return <div className="text-center text-red-600 font-semibold py-8">Lỗi: {error}</div>;
 
   return (
-    <div className="p-4 border border-[#ff8000] rounded-lg">
-      <h1 className="text-2xl font-bold mb-2 text-[#ff8000]">
+    <div className="max-w-5xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-orange-300">
+      <h1 className="text-3xl font-extrabold mb-3 text-orange-600 tracking-wide drop-shadow-md">
         Quản lý phân loại
       </h1>
-      <p className="mb-4">Danh sách và chi tiết các phân loại sản phẩm.</p>
+      <p className="mb-6 text-gray-700">Danh sách và chi tiết các phân loại sản phẩm.</p>
 
       {/* Form thêm mới */}
-      <form onSubmit={handleAddCategory} className="mb-4 flex items-center gap-2">
+      <form onSubmit={handleAddCategory} className="mb-6 flex flex-col md:flex-row items-center gap-4">
         <input
           type="text"
           placeholder="Tên phân loại mới"
           value={newName}
           onChange={e => setNewName(e.target.value)}
-          className="border p-2 rounded flex-1"
+          className="border border-orange-400 focus:border-orange-600 focus:ring-2 focus:ring-orange-300 rounded-lg px-4 py-3 w-full md:flex-1 transition"
           disabled={adding}
         />
         <button
           type="submit"
-          className="bg-[#ff8000] text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
           disabled={adding}
         >
           {adding ? "Đang thêm..." : "Thêm phân loại"}
         </button>
       </form>
-      {addError   && <div className="text-red-600 mb-2">{addError}</div>}
-      {addSuccess && <div className="text-green-600 mb-2">{addSuccess}</div>}
+      {addError   && <div className="text-red-600 mb-4 font-medium">{addError}</div>}
+      {addSuccess && <div className="text-green-600 mb-4 font-medium">{addSuccess}</div>}
 
       {/* Bộ lọc */}
-      <div className="mb-4 flex items-center gap-4">
+      <div className="mb-6 flex flex-col md:flex-row items-center gap-4">
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value as any)}
-          className="border p-2 rounded"
+          className="border border-orange-400 focus:border-orange-600 focus:ring-2 focus:ring-orange-300 rounded-lg px-4 py-2 transition"
         >
           <option value="all">Tất cả</option>
           <option value="active">Hoạt động</option>
@@ -175,42 +175,67 @@ const CategoryManagement: React.FC = () => {
           placeholder="Tìm theo tên..."
           value={filterText}
           onChange={e => setFilterText(e.target.value)}
-          className="border p-2 rounded flex-1"
+          className="border border-orange-400 focus:border-orange-600 focus:ring-2 focus:ring-orange-300 rounded-lg px-4 py-2 flex-1 transition"
         />
       </div>
 
       {/* Bảng */}
-      <table className="min-w-full border-collapse divide-y divide-gray-300">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 text-left">ID</th>
-            <th className="border p-2 text-left">Tên phân loại</th>
-            <th className="border p-2 text-left">Trạng thái</th>
-            <th className="border p-2 text-left">Hành động</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {filtered.map(cat => (
-            <tr key={cat._id} className="hover:bg-gray-50">
-              <td className="border p-2">{cat._id}</td>
-              <td className="border p-2">{cat.name}</td>
-              <td className="border p-2">
-                {cat.status ? "Hoạt động" : "Không hoạt động"}
-              </td>
-              <td className="border p-2">
-                {!cat.status && (
-                  <button
-                    onClick={() => handleEdit(cat)}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Sửa
-                  </button>
-                )}
-              </td>
+      <div className="overflow-x-auto rounded-lg border border-orange-300 shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-orange-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-orange-700">ID</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-orange-700">Tên phân loại</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-orange-700">Trạng thái</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-orange-700">Hành động</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="text-center py-6 text-gray-500 italic">
+                  Không tìm thấy phân loại phù hợp.
+                </td>
+              </tr>
+            ) : filtered.map(cat => (
+              <tr
+                key={cat._id}
+                className="hover:bg-orange-50 transition cursor-default"
+              >
+                <td className="px-6 py-4 text-sm text-gray-700">{cat._id}</td>
+                <td className="px-6 py-4 text-sm text-gray-900 font-medium">{cat.name}</td>
+                <td className={`px-6 py-4 text-sm font-semibold ${
+                  cat.status ? "text-green-600" : "text-red-600"
+                }`}>
+                  {cat.status ? "Hoạt động" : "Không hoạt động"}
+                </td>
+                <td className="px-6 py-4 text-sm">
+                  {!cat.status && (
+                    <button
+                      onClick={() => handleEdit(cat)}
+                      className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-800 font-semibold transition"
+                      title="Sửa phân loại"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5h6m-1 1v6m-7 7l5-5-1.5-1.5-5 5V19z" />
+                      </svg>
+                      Sửa
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,3 @@
-// src/components/maketingManager/DiscountCodes.tsx
-
 "use client";
 import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
@@ -90,7 +88,11 @@ const DiscountCodes: React.FC = () => {
   // Dialog openers
   const openAddDialog = () => {
     setIsEditing(false);
-    setOldCode(""); setCode(""); setDiscountPercent(""); setMinOrderValue(""); setMaxUses("");
+    setOldCode(""); 
+    setCode(""); 
+    setDiscountPercent(""); 
+    setMinOrderValue(""); 
+    setMaxUses("");
     setExpirationDate(tomorrowLocal);
     setShowDialog(true);
   };
@@ -101,112 +103,293 @@ const DiscountCodes: React.FC = () => {
     setDiscountPercent(d.discount_percent.toString());
     setMinOrderValue(d.min_order_value.toString());
     setMaxUses(d.max_uses.toString());
+    setExpirationDate(null); // expiration date can't edit
     setShowDialog(true);
   };
 
-  // Validate & commit same as before...
+  // Validation
   const validate = () => {
-    if (!code || code.length>10) { alert("Mã bắt buộc & ≤10 ký tự"); return false; }
+    if (!code || code.length > 10) { alert("Mã bắt buộc & ≤10 ký tự"); return false; }
     const pct = Number(discountPercent);
-    if (!/^[0-9]+$/.test(discountPercent)||pct<0||pct>100) { alert("Giảm %: số nguyên 0–100"); return false; }
+    if (!/^[0-9]+$/.test(discountPercent) || pct < 0 || pct > 100) { alert("Giảm %: số nguyên 0–100"); return false; }
     const minVal = Number(minOrderValue);
-    if (isNaN(minVal)||minVal<1000) { alert("Tối thiểu ≥1.000 VND"); return false; }
+    if (isNaN(minVal) || minVal < 1000) { alert("Tối thiểu ≥1.000 VND"); return false; }
     if (!isEditing) {
       if (!expirationDate) { alert("Chọn ngày giờ hết hạn"); return false; }
-      if (expirationDate<tomorrowLocal) { alert(`Hết hạn từ ${tomorrowLocal.toLocaleDateString()}`); return false; }
+      if (expirationDate < tomorrowLocal) { alert(`Hết hạn từ ${tomorrowLocal.toLocaleDateString()}`); return false; }
     }
     const mu = Number(maxUses);
-    if (!/^[0-9]+$/.test(maxUses)||mu<1) { alert("Sử dụng tối đa ≥1"); return false; }
+    if (!/^[0-9]+$/.test(maxUses) || mu < 1) { alert("Sử dụng tối đa ≥1"); return false; }
     return true;
   };
+
+  // Commit changes
   const commit = async () => {
     if (!validate()) return;
     setLoading(true);
     try {
       const token = localStorage.getItem("tkn");
-      const endpoint = isEditing? Put_Edit_Discount: Add_Discount;
-      const method = isEditing? "PUT":"POST";
-      const payload:any = { code, discount_percent:Number(discountPercent), min_order_value:Number(minOrderValue), max_uses:Number(maxUses) };
-      if (!isEditing&&expirationDate) { const utc=expirationDate.getTime()-7*60*60000; payload.expiration_date=new Date(utc).toISOString(); }
-      if (isEditing) { payload.old_code=oldCode; payload.new_code=code; }
-      const res = await fetch(endpoint, { method, headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify(payload)});
-      const data = await res.json(); if(!res.ok) throw new Error(data.message||"Lỗi");
-      alert(isEditing?"✅ Cập nhật thành công":"✅ Tạo thành công");
+      if (!token) throw new Error("Chưa có token, vui lòng đăng nhập");
+      const endpoint = isEditing ? Put_Edit_Discount : Add_Discount;
+      const method = isEditing ? "PUT" : "POST";
+      const payload: any = { 
+        code, 
+        discount_percent: Number(discountPercent), 
+        min_order_value: Number(minOrderValue), 
+        max_uses: Number(maxUses) 
+      };
+      if (!isEditing && expirationDate) { 
+        // Convert local GMT+7 back to UTC ISO string
+        const utc = expirationDate.getTime() - 7 * 60 * 60000; 
+        payload.expiration_date = new Date(utc).toISOString();
+      }
+      if (isEditing) { 
+        payload.old_code = oldCode; 
+        payload.new_code = code; 
+      }
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Lỗi");
+      alert(isEditing ? "✅ Cập nhật thành công" : "✅ Tạo thành công");
       setShowDialog(false);
       fetchDiscounts();
-    } catch(e:any){ alert("❌ "+e.message);} finally{setLoading(false);}  };
+    } catch (e: any) { alert("❌ " + e.message); }
+    finally { setLoading(false); }
+  };
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Mã giảm giá</h2>
-        <button onClick={openAddDialog} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Thêm mã giảm giá</button>
+    <div className="p-6 bg-white rounded-lg shadow-md max-w-full">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800">Mã giảm giá</h2>
+        <button
+          onClick={openAddDialog}
+          className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+        >
+          + Thêm mã giảm giá
+        </button>
       </div>
 
-      {/* Filter dropdown */}
-      <div className="mb-4">
-        <select value={filter} onChange={e=>setFilter(e.target.value as any)} className="border p-2 rounded">
+      {/* Filter */}
+      <div className="mb-5">
+        <select
+          value={filter}
+          onChange={e => setFilter(e.target.value as any)}
+          className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+          aria-label="Lọc mã giảm giá"
+        >
           <option value="all">Tất cả</option>
           <option value="active">Đang hoạt động</option>
           <option value="expired">Đã hết hạn</option>
         </select>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-300">
+        <table className="min-w-full border border-gray-300 text-gray-700">
           <thead className="bg-gray-100 text-left">
             <tr>
-              <th className="p-2 border">Mã</th>
-              <th className="p-2 border">Giảm %</th>
-              <th className="p-2 border">Tối thiểu</th>
-              <th className="p-2 border">Hết hạn<br/><span className="text-sm font-normal">(GMT+7)</span></th>
-              <th className="p-2 border">Tối đa</th>
-              <th className="p-2 border">Đã dùng</th>
-              <th className="p-2 border">Tạo lúc<br/><span className="text-sm font-normal">(GMT+7)</span></th>
-              <th className="p-2 border">Cập nhật<br/><span className="text-sm font-normal">(GMT+7)</span></th>
-              <th className="p-2 border">Chỉnh sửa</th>
+              {[
+                "Mã", "Giảm %", "Tối thiểu", "Hết hạn", "Tối đa", "Đã dùng", "Tạo lúc", "Cập nhật", "Chỉnh sửa"
+              ].map((header, idx) => (
+                <th
+                  key={idx}
+                  className="p-3 border border-gray-300 whitespace-nowrap"
+                >
+                  {header}
+                  {(header === "Hết hạn" || header === "Tạo lúc" || header === "Cập nhật") && (
+                    <br />
+                  )}
+                  {(header === "Hết hạn" || header === "Tạo lúc" || header === "Cập nhật") && (
+                    <span className="text-xs font-normal text-gray-500">(GMT+7)</span>
+                  )}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((d,i)=>(
-              <tr key={i} className="hover:bg-gray-50">
-                <td className="p-2 border">{d.code}</td>
-                <td className="p-2 border">{d.discount_percent}%</td>
-                <td className="p-2 border">{d.min_order_value.toLocaleString()}đ</td>
-                <td className="p-2 border">{formatVietnamTime(d.expiration_date)}</td>
-                <td className="p-2 border">{d.max_uses}</td>
-                <td className="p-2 border">{d.times_used}</td>
-                <td className="p-2 border">{formatVietnamTime(d.created_at)}</td>
-                <td className="p-2 border">{formatVietnamTime(d.updated_at)}</td>
-                <td className="p-2 border">
-                  {canEdit && isCreatedToday(d.created_at) && <FaEdit className="cursor-pointer text-orange-500" onClick={()=>openEditDialog(d)}/>}                </td>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={9} className="text-center py-6 text-gray-400 italic">
+                  Không có mã giảm giá phù hợp
+                </td>
+              </tr>
+            )}
+            {filtered.map(d => (
+              <tr
+                key={d.code}
+                className="hover:bg-gray-50 transition-colors duration-150 cursor-default"
+              >
+                <td className="p-3 border border-gray-300">{d.code}</td>
+                <td className="p-3 border border-gray-300">{d.discount_percent}%</td>
+                <td className="p-3 border border-gray-300">{d.min_order_value.toLocaleString()}đ</td>
+                <td className="p-3 border border-gray-300">{formatVietnamTime(d.expiration_date)}</td>
+                <td className="p-3 border border-gray-300">{d.max_uses}</td>
+                <td className="p-3 border border-gray-300">{d.times_used}</td>
+                <td className="p-3 border border-gray-300">{formatVietnamTime(d.created_at)}</td>
+                <td className="p-3 border border-gray-300">{formatVietnamTime(d.updated_at)}</td>
+                <td className="p-3 border border-gray-300 text-center">
+                  {canEdit && isCreatedToday(d.created_at) && (
+                    <FaEdit
+                      className="inline-block text-orange-500 cursor-pointer hover:text-orange-600 transition"
+                      onClick={() => openEditDialog(d)}
+                      title="Chỉnh sửa mã"
+                      aria-label={`Chỉnh sửa mã ${d.code}`}
+                    />
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
+      {/* Dialog */}
       {showDialog && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-transparent flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">{isEditing?"Chỉnh sửa mã":"Tạo mã giảm giá mới"}</h3>
-            <div className="space-y-3">
-              <h2 className="text-sm">Mã giảm giá</h2>
-              <input className="border w-full p-2 rounded" placeholder="Mã giảm giá" value={code} onChange={e=>setCode(e.target.value)}/>
-              <h2 className="text-sm">Giảm %</h2>
-              <input className="border w-full p-2 rounded" type="number" placeholder="Giảm %" value={discountPercent} onChange={e=>setDiscountPercent(e.target.value)}/>
-              <h2 className="text-sm">Giá trị tối thiểu (VNĐ)</h2>
-              <input className="border w-full p-2 rounded" type="number" placeholder="Giá trị tối thiểu (VNĐ)" value={minOrderValue} onChange={e=>setMinOrderValue(e.target.value)}/>
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50 p-4"
+          onClick={() => !loading && setShowDialog(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-semibold mb-5 text-gray-900">
+              {isEditing ? "Chỉnh sửa mã giảm giá" : "Tạo mã giảm giá mới"}
+            </h3>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                commit();
+              }}
+              className="space-y-4"
+            >
+              {/* Code */}
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã giảm giá
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  maxLength={10}
+                  value={code}
+                  onChange={e => setCode(e.target.value.toUpperCase())}
+                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                  placeholder="Nhập mã giảm giá (≤10 ký tự)"
+                  disabled={loading}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {/* Discount percent */}
+              <div>
+                <label htmlFor="discountPercent" className="block text-sm font-medium text-gray-700 mb-1">
+                  Giảm giá (%)
+                </label>
+                <input
+                  id="discountPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={discountPercent}
+                  onChange={e => setDiscountPercent(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                  placeholder="0 - 100"
+                  disabled={loading}
+                  required
+                />
+              </div>
+
+              {/* Min order value */}
+              <div>
+                <label htmlFor="minOrderValue" className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá trị tối thiểu (VNĐ)
+                </label>
+                <input
+                  id="minOrderValue"
+                  type="number"
+                  min={1000}
+                  step={100}
+                  value={minOrderValue}
+                  onChange={e => setMinOrderValue(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                  placeholder="Tối thiểu 1.000 VND"
+                  disabled={loading}
+                  required
+                />
+              </div>
+
+              {/* Expiration date */}
               {!isEditing && (
-                <DatePicker selected={expirationDate} onChange={date=>setExpirationDate(date)} showTimeSelect timeFormat="HH:mm" timeIntervals={60} dateFormat="yyyy-MM-dd HH:mm" minDate={tomorrowLocal} maxDate={endOfYear} className="border w-full p-2 rounded" />
+                <div>
+                  <label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày giờ hết hạn (GMT+7)
+                  </label>
+                  <DatePicker
+                    id="expirationDate"
+                    selected={expirationDate}
+                    onChange={date => setExpirationDate(date)}
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    timeCaption="Giờ"
+                    dateFormat="yyyy-MM-dd HH:mm"
+                    minDate={tomorrowLocal}
+                    maxDate={endOfYear}
+                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                    placeholderText="Chọn ngày giờ hết hạn"
+                    disabled={loading}
+                    required
+                  />
+                </div>
               )}
-              <h2 className="text-sm">Sử dụng tối đa (lần)</h2>
-              <input className="border w-full p-2 rounded" type="number" placeholder="Sử dụng tối đa" value={maxUses} onChange={e=>setMaxUses(e.target.value)}/>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={()=>setShowDialog(false)} className="px-4 py-2 border rounded">Huỷ</button>
-              <button onClick={commit} disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{loading?"Đang xử lý...":(isEditing?"Cập nhật":"Tạo mã")}</button>
-            </div>
+
+              {/* Max uses */}
+              <div>
+                <label htmlFor="maxUses" className="block text-sm font-medium text-gray-700 mb-1">
+                  Số lần sử dụng tối đa
+                </label>
+                <input
+                  id="maxUses"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={maxUses}
+                  onChange={e => setMaxUses(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                  placeholder="Tối thiểu 1"
+                  disabled={loading}
+                  required
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => !loading && setShowDialog(false)}
+                  className="px-4 py-2 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-md bg-orange-500 text-white font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  {loading ? (isEditing ? "Đang cập nhật..." : "Đang tạo...") : (isEditing ? "Cập nhật" : "Tạo mới")}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

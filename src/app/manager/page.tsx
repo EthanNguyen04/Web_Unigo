@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -76,22 +77,19 @@ const Sidebar = () => {
   const [name, setName]                 = useState<string>("");
   const router = useRouter();
 
-  // read role from localStorage
-    const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
-  // read role on client only
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const r = localStorage.getItem('role');
       setRole(r);
     }
   }, []);
-  // filter menu: staff cannot see these
+
   const filteredMenu = role === 'staff'
     ? menuItems.filter(item => !['/','/stats','/users'].includes(item.path))
     : menuItems;
 
-  // Lấy tên user từ localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedName = localStorage.getItem("name");
@@ -99,7 +97,6 @@ const Sidebar = () => {
     }
   }, []);
 
-  // Kiểm tra token khi load page
   useEffect(() => {
     const checkToken = async () => {
       if (typeof window === "undefined") return;
@@ -125,13 +122,11 @@ const Sidebar = () => {
     checkToken();
   }, [router]);
 
-  // Chuyển trang khi click menu
   const handleMenuClick = (component: React.ReactElement, path: string) => {
     setSelectedPage(component);
     setActivePath(path);
   };
 
-  // Đăng xuất
   const handleLogout = () => {
     if (!window.confirm("Bạn có chắc chắn muốn đăng xuất?")) return;
     const token = localStorage.getItem("tkn");
@@ -154,53 +149,50 @@ const Sidebar = () => {
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <div
-        className={`${
-          collapsed ? "w-16" : "w-1/5"
-        } bg-[#CE6700] text-white h-full flex flex-col justify-between transition-all duration-300`}
+        className={`$ {
+          collapsed ? "w-16" : "w-60"
+        } bg-gradient-to-b from-orange-500 to-orange-700 text-white h-full flex flex-col justify-between shadow-lg transition-all duration-300`}
       >
-        {/* Logo & collapse */}
         <div>
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between px-4 py-5 border-b border-orange-300">
             {!collapsed && (
-              <span className="text-xl font-bold">Quản lý Unigo</span>
+              <span className="text-lg font-bold tracking-wide">Unigo Admin</span>
             )}
             <button onClick={() => setCollapsed(!collapsed)}>
               {collapsed ? (
-                <ChevronRightIcon className="h-6 w-6" />
+                <ChevronRightIcon className="h-5 w-5" />
               ) : (
-                <ChevronLeftIcon className="h-6 w-6" />
+                <ChevronLeftIcon className="h-5 w-5" />
               )}
             </button>
           </div>
 
-          {/* Menu items */}
-          <nav className="flex flex-col">
+          <nav className="flex flex-col mt-4">
             {filteredMenu.map(item => (
               <button
                 key={item.path}
                 onClick={() => handleMenuClick(item.component, item.path)}
-                className={`flex items-center p-4 transition-colors ${
-                  activePath === item.path ? "bg-gray-600" : "hover:bg-gray-700"
+                className={`flex items-center px-4 py-3 text-sm font-medium transition-colors rounded-l-full ${
+                  activePath === item.path ? "bg-white text-orange-700 shadow-md" : "hover:bg-orange-600"
                 }`}
               >
                 {item.icon}
-                {!collapsed && <span>{item.name}</span>}
+                {!collapsed && <span className="truncate">{item.name}</span>}
               </button>
             ))}
           </nav>
         </div>
 
-        {/* Footer: user & logout */}
-        <div className="flex items-center justify-between p-4 border-t border-white/30 mb-10">
-          {!collapsed && <span className="text-sm">{name}</span>}
-          <button onClick={handleLogout}>
-            <PowerIcon className="h-6 w-6" />
+        <div className="flex items-center justify-between px-4 py-4 border-t border-orange-300">
+          {!collapsed && <span className="text-xs font-light">{name}</span>}
+          <button onClick={handleLogout} className="hover:text-red-300">
+            <PowerIcon className="h-5 w-5" />
           </button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="bg-white flex-1 p-6 overflow-y-auto">
+      <div className="bg-gray-50 flex-1 p-6 overflow-y-auto">
         {selectedPage}
       </div>
     </div>

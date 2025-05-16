@@ -14,11 +14,11 @@ const tabLabels = [
   { key: "shipping",   label: "Đang giao hàng"  },
   { key: "delivered",  label: "Đã giao"         },
   { key: "completed",  label: "Hoàn thành"      },
-  { key: "canceled",   label: "Hủy"             },
+  { key: "canceled",   label: "Đã huỷ"          },
 ];
 
 const Orders = () => {
-  const [activeTab, setActiveTab] = useState<string>(tabLabels[0].key);
+  const [activeTab, setActiveTab] = useState<string>("pending");
 
   const renderContent = () => {
     switch (activeTab) {
@@ -33,19 +33,19 @@ const Orders = () => {
   };
 
   return (
-    <div className="flex-1 p-6">
-      <h1 className="text-2xl font-bold mb-4">Quản lý đơn hàng</h1>
+    <div className="p-6 bg-white rounded-xl shadow-md">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Quản lý đơn hàng</h1>
 
       {/* Tabs */}
-      <div className="flex border-b mb-6">
-        {tabLabels.map(tab => (
+      <div className="flex flex-wrap gap-2 mb-6">
+        {tabLabels.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 -mb-px border-b-2 font-bold transition
+            className={`px-4 py-2 rounded-full font-semibold text-sm shadow-sm transition duration-200
               ${activeTab === tab.key
-                ? "border-[#ff8000] text-[#ff8000]"
-                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                ? "bg-orange-500 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
           >
             {tab.label}
@@ -53,8 +53,8 @@ const Orders = () => {
         ))}
       </div>
 
-      {/* Nội dung từng tab */}
-      <div>
+      {/* Nội dung */}
+      <div className="bg-gray-50 rounded-lg shadow-inner p-4 min-h-[300px]">
         {renderContent()}
       </div>
     </div>

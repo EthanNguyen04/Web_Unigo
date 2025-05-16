@@ -1,7 +1,6 @@
-// src/components/maketingManager/CompletedOrders.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { get_order, BASE_URL } from "../../config";
 
 interface Variant {
@@ -41,9 +40,16 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   da_thanh_toan: "Đã thanh toán",
 };
 
+const formatCurrency = (amount: number) =>
+  amount.toLocaleString("vi-VN") + "₫";
+
 const CompletedOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCompleted();
+  }, []);
 
   const fetchCompleted = async () => {
     setLoading(true);
@@ -54,71 +60,85 @@ const CompletedOrders: React.FC = () => {
       });
       const data = await res.json();
       setOrders(data.orders || []);
-    } catch (err) {
-      console.error("Lỗi khi tải đơn đã hoàn thành:", err);
+    } catch (error) {
+      console.error("Lỗi khi tải đơn đã hoàn thành:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchCompleted();
-  }, []);
-
-  if (loading) return <div>Đang tải đơn đã hoàn thành…</div>;
-  if (!orders.length) return <div>Chưa có đơn nào hoàn thành.</div>;
+  if (loading) return <div className="p-4 text-center">⏳ Đang tải đơn đã hoàn thành…</div>;
+  if (!orders.length) return <div className="p-4 text-center text-gray-500">Chưa có đơn nào hoàn thành.</div>;
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="p-4 space-y-6">
       <h2 className="text-xl font-semibold mb-4">Đơn hàng hoàn thành</h2>
-      {orders.map(o => (
-        <div key={o.orderId} className="border rounded p-4 bg-white shadow-sm">
-          <h3 className="font-bold mb-2">Mã đơn: {o.orderId}</h3>
-          <p>
-            <span className="font-semibold">User ID:</span> {o.user_id}
-          </p>
-          <p>
-            <span className="font-semibold">Địa chỉ:</span> {o.shipping_address.address}
-          </p>
-          <p>
-            <span className="font-semibold">Phone:</span> {o.shipping_address.phone}
-          </p>
-          <p>
-            <span className="font-semibold">Trạng thái đơn:</span>{" "}
-            {ORDER_STATUS_LABEL[o.order_status] || o.order_status}
-          </p>
-          <p>
-            <span className="font-semibold">Thanh toán:</span>{" "}
-            {PAYMENT_STATUS_LABEL[o.payment_status] || o.payment_status}
-          </p>
-          <p>
-            <span className="font-semibold">Giá gốc:</span> {o.rawTotal.toLocaleString()}₫
-          </p>
-          <p>
-            <span className="font-semibold">Thanh toán:</span> {o.purchaseTotal.toLocaleString()}₫
-          </p>
-          <div className="mt-4 space-y-4">
-            {o.products.map((p, i) => (
-              <div key={i} className="flex border-t pt-4">
-                <img
-                  src={BASE_URL + p.firstImage}
-                  alt={p.name}
-                  className="w-20 h-20 object-cover rounded"
-                />
-                <div className="ml-4 flex-1">
-                  <p className="font-medium">{p.name}</p>
-                  <p>Giá: {p.price.toLocaleString()}₫</p>
-                  {p.variants.map((v, vi) => (
-                    <p key={vi} className="text-sm text-gray-700">
-                      – Màu: {v.color}, Size: {v.size}, Số lượng: {v.quantity}, Giá đơn vị: {v.price.toLocaleString()}₫
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {orders.map(order => (
+        <OrderCard key={order.orderId} order={order} />
       ))}
+    </div>
+  );
+};
+
+interface OrderCardProps {
+  order: Order;
+}
+
+const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
+  const {
+    orderId,
+    user_id,
+    shipping_address: { address, phone },
+    order_status,
+    payment_status,
+    rawTotal,
+    purchaseTotal,
+    products,
+  } = order;
+
+  return (
+    <div className="bg-white rounded border shadow-sm p-4">
+      <h3 className="font-bold mb-2 text-blue-700">Mã đơn: {orderId}</h3>
+      <p><b>User ID:</b> {user_id}</p>
+      <p><b>Địa chỉ:</b> {address}</p>
+      <p><b>Phone:</b> {phone}</p>
+      <p><b>Trạng thái đơn:</b> {ORDER_STATUS_LABEL[order_status] || order_status}</p>
+      <p><b>Thanh toán:</b> {PAYMENT_STATUS_LABEL[payment_status] || payment_status}</p>
+      <p><b>Giá gốc:</b> {formatCurrency(rawTotal)}</p>
+      <p><b>Thanh toán:</b> {formatCurrency(purchaseTotal)}</p>
+
+      <div className="mt-4 space-y-4">
+        {products.map((product, idx) => (
+          <ProductItem key={idx} product={product} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+interface ProductItemProps {
+  product: Product;
+}
+
+const ProductItem: React.FC<ProductItemProps> = ({ product }) => {
+  const { firstImage, name, price, variants } = product;
+
+  return (
+    <div className="flex border-t pt-4 gap-4">
+      <img
+        src={BASE_URL + firstImage}
+        alt={name}
+        className="w-20 h-20 object-cover rounded"
+      />
+      <div className="flex-1">
+        <p className="font-medium">{name}</p>
+        <p>Giá: {formatCurrency(price)}</p>
+        {variants.map((v, idx) => (
+          <p key={idx} className="text-sm text-gray-700">
+            – Màu: {v.color}, Size: {v.size}, SL: {v.quantity}, Giá đơn vị: {formatCurrency(v.price)}
+          </p>
+        ))}
+      </div>
     </div>
   );
 };
