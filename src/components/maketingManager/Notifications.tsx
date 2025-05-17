@@ -1,8 +1,7 @@
-// src/components/maketingManager/Notifications.tsx
-
 "use client";
 import React, { useState, useEffect } from "react";
 import { Post_notification, Get_Noti } from "../../config";
+import { FiPlusCircle, FiX, FiSend, FiLoader } from "react-icons/fi";
 
 interface NotificationItem {
   title: string;
@@ -10,14 +9,29 @@ interface NotificationItem {
   time: string;
 }
 
+// Simple Toast Component
+const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
+  useEffect(() => {
+    const timeout = setTimeout(onClose, 3500);
+    return () => clearTimeout(timeout);
+  }, [onClose]);
+  return (
+    <div className="fixed bottom-6 right-6 bg-red-600 text-white px-5 py-3 rounded shadow-lg font-semibold drop-shadow-lg animate-fade-in-out z-50">
+      {message}
+    </div>
+  );
+};
+
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
 
-  // Fetch existing notifications (default type = user)
+  const showError = (msg: string) => setToastMsg(msg);
+
   const fetchNoti = async () => {
     try {
       const res = await fetch(`${Get_Noti}?type=user`);
@@ -26,12 +40,12 @@ const Notifications: React.FC = () => {
         const list: NotificationItem[] = data.notifications.map((n: any) => ({
           title: n.title,
           message: n.content,
-          time: n.time
+          time: new Date(n.time).toLocaleString("vi-VN", { hour12: false }),
         }));
         setNotifications(list);
       }
     } catch (err: any) {
-      alert("❌ Lỗi khi tải thông báo: " + err.message);
+      showError("❌ Lỗi khi tải thông báo: " + err.message);
     }
   };
 
@@ -41,7 +55,7 @@ const Notifications: React.FC = () => {
 
   const handleAdd = async () => {
     if (!title.trim() || !message.trim()) {
-      alert("Vui lòng nhập tiêu đề và nội dung.");
+      showError("Vui lòng nhập tiêu đề và nội dung.");
       return;
     }
 
@@ -62,97 +76,152 @@ const Notifications: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Lỗi khi gửi thông báo");
 
-      // Clear form and close dialog
       setShowDialog(false);
       setTitle("");
       setMessage("");
-
-      // Refetch list to include new notification
       fetchNoti();
     } catch (err: any) {
-      alert("❌ " + err.message);
+      showError("❌ " + err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Thông báo</h2>
+    <div className="p-6 max-w-4xl mx-auto">
+      <header className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-bold text-gray-800">Thông báo</h2>
         <button
           onClick={() => setShowDialog(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+          className="flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-lg shadow hover:bg-green-700 transition"
+          aria-label="Thêm thông báo mới"
         >
-          + Thêm thông báo
+          <FiPlusCircle size={20} />
+          <span className="font-semibold">Thêm thông báo</span>
         </button>
-      </div>
+      </header>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-300">
-          <thead className="bg-gray-100 text-left">
+      <div className="overflow-x-auto rounded-lg shadow border border-gray-300">
+        <table className="min-w-full divide-y divide-gray-200 bg-white">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="p-2 border">Tiêu đề</th>
-              <th className="p-2 border">Nội dung</th>
-              <th className="p-2 border">Thời gian</th>
+              {["Tiêu đề", "Nội dung", "Thời gian"].map((header) => (
+                <th
+                  key={header}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide"
+                >
+                  {header}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody>
-            {notifications.map((n, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="p-2 border">{n.title}</td>
-                <td className="p-2 border">{n.message}</td>
-                <td className="p-2 border">{n.time}</td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-gray-200">
             {notifications.length === 0 && (
               <tr>
-                <td colSpan={3} className="p-4 text-center text-gray-500">
+                <td colSpan={3} className="py-8 text-center text-gray-400 italic">
                   Chưa có thông báo nào.
                 </td>
               </tr>
             )}
+            {notifications.map((n, idx) => (
+              <tr
+                key={idx}
+                className="hover:bg-green-50 transition cursor-default"
+                title={`${n.title} - ${n.message}`}
+              >
+                <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-700">{n.title}</td>
+                <td className="px-6 py-4 whitespace-pre-wrap max-w-xl">{n.message}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{n.time}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
+      {/* Modal */}
       {showDialog && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-transparent flex justify-center items-center z-50">
-          <div className="bg-[#FFF] rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Tạo thông báo mới</h3>
-            <div className="space-y-3">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm"
+          onClick={() => !loading && setShowDialog(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => !loading && setShowDialog(false)}
+              aria-label="Đóng cửa sổ"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition"
+              disabled={loading}
+            >
+              <FiX size={24} />
+            </button>
+            <h3 className="text-2xl font-semibold mb-5 text-gray-800">Tạo thông báo mới</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAdd();
+              }}
+              className="flex flex-col gap-4"
+            >
               <input
                 type="text"
-                className="border w-full p-2 rounded"
+                className="border border-gray-300 rounded-md px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                 placeholder="Tiêu đề thông báo"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={loading}
+                autoFocus
+                required
+                maxLength={100}
+                aria-label="Tiêu đề thông báo"
               />
               <textarea
-                className="border w-full p-2 rounded h-24"
+                className="border border-gray-300 rounded-md px-4 py-3 text-gray-700 resize-y min-h-[100px] focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                 placeholder="Nội dung thông báo"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-              />
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setShowDialog(false)}
-                className="px-4 py-2 border rounded"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleAdd}
                 disabled={loading}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                {loading ? "Đang gửi..." : "Gửi"}
-              </button>
-            </div>
+                required
+                maxLength={500}
+                aria-label="Nội dung thông báo"
+              />
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => !loading && setShowDialog(false)}
+                  className="px-5 py-2 rounded-md border border-gray-300 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? <FiLoader className="animate-spin" size={20} /> : <FiSend size={20} />}
+                  {loading ? "Đang gửi..." : "Gửi"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
+
+      <style jsx>{`
+        @keyframes fade-in-out {
+          0%, 100% { opacity: 0; transform: translateY(10px);}
+          10%, 90% { opacity: 1; transform: translateY(0);}
+        }
+        .animate-fade-in-out {
+          animation: fade-in-out 4s ease forwards;
+        }
+      `}</style>
     </div>
   );
 };

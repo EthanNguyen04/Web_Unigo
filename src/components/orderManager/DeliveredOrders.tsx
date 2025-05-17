@@ -1,4 +1,3 @@
-// src/components/maketingManager/DeliveredOrders.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -41,9 +40,16 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   da_thanh_toan: "Đã thanh toán",
 };
 
+const formatCurrency = (amount: number) =>
+  `${amount.toLocaleString("vi-VN")}₫`;
+
 const DeliveredOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDelivered();
+  }, []);
 
   const fetchDelivered = async () => {
     setLoading(true);
@@ -61,56 +67,63 @@ const DeliveredOrders: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchDelivered();
-  }, []);
-
-  if (loading) return <div>Đang tải đơn đã giao…</div>;
-  if (!orders.length) return <div>Chưa có đơn nào đã giao.</div>;
+  if (loading)
+    return <div className="p-4 text-center text-gray-600">⏳ Đang tải đơn đã giao…</div>;
+  if (!orders.length)
+    return (
+      <div className="p-4 text-center text-gray-500">📭 Chưa có đơn nào đã giao.</div>
+    );
 
   return (
-    <div className="space-y-6 p-4">
-      <h2 className="text-xl font-semibold mb-4">Đơn hàng đã giao</h2>
-      {orders.map(o => (
-        <div key={o.orderId} className="border rounded p-4 bg-white shadow-sm">
-          <h3 className="font-bold mb-2">Mã đơn: {o.orderId}</h3>
+    <div className="p-6 bg-gray-50 min-h-screen space-y-6">
+      <h2 className="text-2xl font-bold mb-4 text-blue-700">📦 Đơn hàng đã giao</h2>
+      {orders.map((order) => (
+        <div
+          key={order.orderId}
+          className="bg-white rounded-lg shadow-md p-5 border border-gray-200"
+        >
+          <h3 className="text-lg font-semibold mb-2 text-blue-800">
+            🧾 Mã đơn: {order.orderId}
+          </h3>
           <p>
-            <span className="font-semibold">User ID:</span> {o.user_id}
+            <strong>User ID:</strong> {order.user_id}
           </p>
           <p>
-            <span className="font-semibold">Địa chỉ:</span> {o.shipping_address.address}
+            <strong>📍 Địa chỉ:</strong> {order.shipping_address.address}
           </p>
           <p>
-            <span className="font-semibold">Phone:</span> {o.shipping_address.phone}
+            <strong>📞 Phone:</strong> {order.shipping_address.phone}
           </p>
           <p>
-            <span className="font-semibold">Trạng thái đơn:</span>{" "}
-            {ORDER_STATUS_LABEL[o.order_status] || o.order_status}
+            <strong>📦 Trạng thái:</strong>{" "}
+            {ORDER_STATUS_LABEL[order.order_status] || order.order_status}
           </p>
           <p>
-            <span className="font-semibold">Thanh toán:</span>{" "}
-            {PAYMENT_STATUS_LABEL[o.payment_status] || o.payment_status}
+            <strong>💳 Thanh toán:</strong>{" "}
+            {PAYMENT_STATUS_LABEL[order.payment_status] || order.payment_status}
           </p>
           <p>
-            <span className="font-semibold">Giá gốc:</span> {o.rawTotal.toLocaleString()}₫
+            <strong>💰 Giá gốc:</strong> {formatCurrency(order.rawTotal)}
           </p>
           <p>
-            <span className="font-semibold">Thanh toán:</span> {o.purchaseTotal.toLocaleString()}₫
+            <strong>✅ Thanh toán:</strong> {formatCurrency(order.purchaseTotal)}
           </p>
+
           <div className="mt-4 space-y-4">
-            {o.products.map((p, i) => (
-              <div key={i} className="flex border-t pt-4">
+            {order.products.map((product, i) => (
+              <div key={i} className="flex gap-4 border-t pt-4">
                 <img
-                  src={BASE_URL + p.firstImage}
-                  alt={p.name}
-                  className="w-20 h-20 object-cover rounded"
+                  src={BASE_URL + product.firstImage}
+                  alt={product.name}
+                  className="w-20 h-20 rounded object-cover border"
                 />
-                <div className="ml-4 flex-1">
-                  <p className="font-medium">{p.name}</p>
-                  <p>Giá: {p.price.toLocaleString()}₫</p>
-                  {p.variants.map((v, vi) => (
+                <div className="flex-1">
+                  <p className="font-medium">{product.name}</p>
+                  <p>Giá: {formatCurrency(product.price)}</p>
+                  {product.variants.map((v, vi) => (
                     <p key={vi} className="text-sm text-gray-700">
-                      – Màu: {v.color}, Size: {v.size}, Số lượng: {v.quantity}, Giá đơn vị: {v.price.toLocaleString()}₫
+                      – Màu: {v.color}, Size: {v.size}, Số lượng: {v.quantity}, Giá đơn
+                      vị: {formatCurrency(v.price)}
                     </p>
                   ))}
                 </div>

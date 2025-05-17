@@ -105,12 +105,12 @@ const ReadyOrders: React.FC = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">Đơn hàng chờ lấy</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Đơn hàng chờ lấy</h2>
 
       <button
         onClick={markAsDispatched}
         disabled={!selectedIds.length || updating}
-        className={`mb-4 px-4 py-2 rounded text-white ${
+        className={`mb-6 px-5 py-2.5 rounded-lg text-white font-medium transition-all duration-200 shadow-md ${
           selectedIds.length && !updating
             ? "bg-green-600 hover:bg-green-700"
             : "bg-gray-400 cursor-not-allowed"
@@ -123,64 +123,41 @@ const ReadyOrders: React.FC = () => {
         {orders.map(o => (
           <div
             key={o.orderId}
-            className="border rounded p-4 bg-white shadow-sm flex"
+            className={`border rounded-xl p-6 bg-white shadow-md transition-transform hover:scale-[1.01] flex gap-4`}
           >
-            <label className="mr-4 self-start">
+            <div className="pt-1">
               <input
                 type="checkbox"
                 checked={selectedIds.includes(o.orderId)}
                 onChange={() => toggleSelect(o.orderId)}
-                className="h-4 w-4"
+                className="w-5 h-5 accent-green-600"
               />
-            </label>
-            <div className="flex-1">
-              <h3 className="font-bold mb-2">Mã đơn: {o.orderId}</h3>
-              <p>
-                <span className="font-semibold">User ID:</span> {o.user_id}
-              </p>
-              <p>
-                <span className="font-semibold">Địa chỉ:</span>{" "}
-                {o.shipping_address.address}
-              </p>
-              <p>
-                <span className="font-semibold">Phone:</span>{" "}
-                {o.shipping_address.phone}
-              </p>
-              <p>
-                <span className="font-semibold">Trạng thái đơn:</span>{" "}
-                {ORDER_STATUS_LABEL[o.order_status] || o.order_status}
-              </p>
-              <p>
-                <span className="font-semibold">Thanh toán:</span>{" "}
-                {PAYMENT_STATUS_LABEL[o.payment_status] ||
-                  o.payment_status}
-              </p>
-              <p>
-                <span className="font-semibold">Giá gốc:</span>{" "}
-                {o.rawTotal.toLocaleString()}₫
-              </p>
-              <p>
-                <span className="font-semibold">Thanh toán:</span>{" "}
-                {o.purchaseTotal.toLocaleString()}₫
-              </p>
+            </div>
+            <div className="flex-1 space-y-2">
+              <h3 className="text-lg font-semibold text-gray-800">Mã đơn: {o.orderId}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-700">
+                <p><span className="font-medium">User ID:</span> {o.user_id}</p>
+                <p><span className="font-medium">Địa chỉ:</span> {o.shipping_address.address}</p>
+                <p><span className="font-medium">Phone:</span> {o.shipping_address.phone}</p>
+                <p><span className="font-medium">Trạng thái:</span> {ORDER_STATUS_LABEL[o.order_status] || o.order_status}</p>
+                <p><span className="font-medium">Thanh toán:</span> {PAYMENT_STATUS_LABEL[o.payment_status] || o.payment_status}</p>
+                <p><span className="font-medium">Giá gốc:</span> {o.rawTotal.toLocaleString()}₫</p>
+                <p><span className="font-medium">Thanh toán:</span> {o.purchaseTotal.toLocaleString()}₫</p>
+              </div>
               <div className="mt-4 space-y-4">
                 {o.products.map((p, i) => (
-                  <div key={i} className="flex border-t pt-4">
+                  <div key={i} className="flex border-t pt-4 gap-4">
                     <img
                       src={BASE_URL + p.firstImage}
                       alt={p.name}
-                      className="w-20 h-20 object-cover rounded"
+                      className="w-20 h-20 object-cover rounded-lg border"
                     />
-                    <div className="ml-4 flex-1">
-                      <p className="font-medium">{p.name}</p>
-                      <p>Giá: {p.price.toLocaleString()}₫</p>
+                    <div className="flex-1 space-y-1">
+                      <p className="font-medium text-gray-800">{p.name}</p>
+                      <p className="text-sm text-gray-600">Giá: {p.price.toLocaleString()}₫</p>
                       {p.variants.map((v, vi) => (
-                        <p
-                          key={vi}
-                          className="text-sm text-gray-700"
-                        >
-                          – Màu: {v.color}, Size: {v.size}, Số lượng:{" "}
-                          {v.quantity}, Giá: {v.price.toLocaleString()}₫
+                        <p key={vi} className="text-sm text-gray-500">
+                          – Màu: {v.color}, Size: {v.size}, Số lượng: {v.quantity}, Giá: {v.price.toLocaleString()}₫
                         </p>
                       ))}
                     </div>

@@ -1,67 +1,63 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import VariantBuilder, { Variant } from "./form/variantAdd"; // Điều chỉnh đường dẫn nếu cần
-import {BASE_URL, API_ADD_PRODUCT, API_Get_CATEGORY } from "../../config";
+import React, { useState, useEffect } from "react";
+import VariantBuilder, { Variant } from "./form/variantAdd";
+import { API_ADD_PRODUCT, API_Get_CATEGORY } from "../../config";
 
 interface AddProductProps {
-    onClose: () => void;
-  }
-  
-const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
+  onClose: () => void;
+}
+
+const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
-  const [priceIn, setPriceIn] = useState(""); 
+  const [priceIn, setPriceIn] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
-  // Sử dụng state cho 6 slot ảnh, khởi tạo mảng 6 phần tử null
   const [imageSlots, setImageSlots] = useState<(File | null)[]>(Array(6).fill(null));
-  const [message, setMessage] = useState("");
+  const [previewUrls, setPreviewUrls] = useState<(string | null)[]>(Array(6).fill(null));
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
+  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Lấy danh mục từ API (danh mục là tùy chọn, không validate bắt buộc)
   useEffect(() => {
-    const fetchCategories = async () => {
+    async function fetchCategories() {
       try {
         const res = await fetch(API_Get_CATEGORY);
+        if (!res.ok) throw new Error("Lỗi tải danh mục");
         const data = await res.json();
         setCategories(data.categories);
       } catch (error) {
         console.error("Lỗi khi lấy danh mục:", error);
       }
-    };
+    }
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    const newUrls = imageSlots.map((file) =>
+      file ? URL.createObjectURL(file) : null
+    );
+    previewUrls.forEach((url) => {
+      if (url) URL.revokeObjectURL(url);
+    });
+    setPreviewUrls(newUrls);
+    return () => {
+      newUrls.forEach((url) => url && URL.revokeObjectURL(url));
+    };
+  }, [imageSlots]);
+
   const handleFileChange = (index: number, file: File) => {
-    const newSlots = [...imageSlots];
-    newSlots[index] = file;
-    setImageSlots(newSlots);
+    setImageSlots((prev) => {
+      const updated = [...prev];
+      updated[index] = file;
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage("");
     setIsSubmitting(true);
-    // Chuyển variants thành JSON string
-    const variantsJSON = JSON.stringify(variants);
-
-    // Tạo đối tượng FormData để gửi dữ liệu kèm file upload
-    const formData = new FormData();
-    formData.append("name", name);
-    // Danh mục là tùy chọn, nên nếu không chọn sẽ gửi giá trị rỗng
-    formData.append("category_id", categoryId);
-    formData.append("description", description);
-    formData.append("priceIn", priceIn);                // <-- gửi giá nhập
-    formData.append("variants", variantsJSON);
-
-    // Thêm các file ảnh từ imageSlots (chỉ những file khác null)
-    imageSlots.forEach((file) => {
-      if (file) {
-        formData.append("images", file);
-      }
-    });
 
     try {
       const token = localStorage.getItem("tkn");
@@ -70,57 +66,86 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
         setIsSubmitting(false);
         return;
       }
+
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("category_id", categoryId);
+      formData.append("description", description);
+      formData.append("priceIn", priceIn);
+      formData.append("variants", JSON.stringify(variants));
+
+      imageSlots.forEach((file) => {
+        if (file) formData.append("images", file);
+      });
+
       const res = await fetch(API_ADD_PRODUCT, {
         method: "POST",
         headers: {
-          // Không set Content-Type khi dùng FormData
-          Authorization: "Bearer " + token,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
+
       const data = await res.json();
-      console.log(data);
+
       if (!res.ok) {
         setMessage(data.message || "Có lỗi xảy ra khi thêm sản phẩm");
       } else {
         setMessage("Thêm sản phẩm thành công!");
-        setTimeout(() => {
-            onClose();
-          }, 1000);
+        setTimeout(onClose, 1200);
       }
     } catch (error: any) {
       setMessage("Lỗi: " + error.message);
-      console.log(error.message)
+      console.error(error);
     } finally {
-        setIsSubmitting(false);
-      }
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="p-4 border border-[#ff8000] rounded-lg overflow-auto max-h-[90vh]">
-      <h1 className="text-2xl font-bold mb-4 text-[#ff8000]">Thêm sản phẩm mới</h1>
-      {message && <div className="mb-4 text-red-500">{message}</div>}
-      <form onSubmit={handleSubmit} encType="multipart/form-data" className="space-y-4">
-        {/* Phần Hình ảnh */}
+    <div className="max-w-4xl mx-auto p-6 bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-xl border border-orange-300 overflow-auto max-h-[90vh]">
+      <h1 className="text-4xl font-extrabold mb-8 text-orange-600 tracking-wide drop-shadow-md">
+        Thêm sản phẩm mới
+      </h1>
+
+      {message && (
+        <div
+          className={`mb-6 px-4 py-3 rounded ${
+            message.includes("thành công")
+              ? "bg-green-100 text-green-800 border border-green-300"
+              : "bg-red-100 text-red-800 border border-red-300"
+          } shadow-sm font-semibold`}
+        >
+          {message}
+        </div>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        encType="multipart/form-data"
+        className="space-y-8"
+      >
+        {/* Hình ảnh */}
         <div>
-          <label className="block font-semibold mb-2">Hình ảnh:</label>
-          <div className="grid grid-cols-6 gap-2">
+          <label className="block text-lg font-semibold mb-3 text-orange-700">
+            Hình ảnh sản phẩm (tối đa 6 ảnh):
+          </label>
+          <div className="grid grid-cols-6 gap-4">
             {imageSlots.map((slot, index) => (
               <div
                 key={index}
-                className="w-full aspect-[16/10] border border-dashed border-gray-400 rounded flex items-center justify-center cursor-pointer relative bg-gray-200"
-                onClick={() =>
-                  document.getElementById(`fileInput-${index}`)?.click()
-                }
+                className="relative cursor-pointer w-full aspect-[16/10] rounded-lg border-2 border-dashed border-orange-400 bg-orange-50 hover:bg-orange-100 transition-shadow shadow-sm hover:shadow-lg flex items-center justify-center overflow-hidden"
+                onClick={() => document.getElementById(`fileInput-${index}`)?.click()}
+                title={`Chọn ảnh ${index + 1}`}
               >
-                {slot ? (
+                {previewUrls[index] ? (
                   <img
-                    src={URL.createObjectURL(slot)}
+                    src={previewUrls[index]!}
                     alt={`Ảnh ${index + 1}`}
-                    className="object-contain w-full h-full rounded"
+                    className="object-cover w-full h-full rounded-lg"
                   />
                 ) : (
-                  <span className="text-gray-400 text-xl">+</span>
+                  <span className="text-orange-400 text-5xl font-bold select-none">+</span>
                 )}
                 <input
                   type="file"
@@ -128,7 +153,7 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
                   accept="image/*"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
+                    if (e.target.files?.[0]) {
                       handleFileChange(index, e.target.files[0]);
                     }
                   }}
@@ -138,23 +163,30 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
           </div>
         </div>
 
+        {/* Tên sản phẩm */}
         <div>
-          <label className="block font-semibold">Tên sản phẩm:</label>
+          <label className="block mb-2 text-lg font-semibold text-orange-700">
+            Tên sản phẩm:
+          </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border p-2 rounded"
             required
+            placeholder="Nhập tên sản phẩm"
+            className="w-full rounded-lg border border-orange-300 px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-400 shadow-md transition"
           />
         </div>
 
+        {/* Danh mục */}
         <div>
-          <label className="block font-semibold">Danh mục:</label>
+          <label className="block mb-2 text-lg font-semibold text-orange-700">
+            Danh mục:
+          </label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full border p-2 rounded"
+            className="w-full rounded-lg border border-orange-300 px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-400 shadow-md transition"
           >
             <option value="">Chọn danh mục (nếu có)</option>
             {categories.map((cat) => (
@@ -165,39 +197,51 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose })=> {
           </select>
         </div>
 
+        {/* Mô tả */}
         <div>
-          <label className="block font-semibold">Mô tả:</label>
+          <label className="block mb-2 text-lg font-semibold text-orange-700">
+            Mô tả:
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full border p-2 rounded"
             required
-          ></textarea>
-        </div>
-        <div>
-          <label className="block font-semibold">Giá nhập (VNĐ):</label>
-          <input
-            type="number"
-            min="0"
-            step="1000"
-            value={priceIn}
-            onChange={(e) => setPriceIn(e.target.value)}
-            className="w-full border p-2 rounded"
-            placeholder="Nhập giá nhập"
-            required
+            rows={5}
+            placeholder="Nhập mô tả chi tiết sản phẩm"
+            className="w-full rounded-lg border border-orange-300 px-4 py-3 resize-y focus:outline-none focus:ring-4 focus:ring-orange-400 shadow-md transition"
           />
         </div>
 
-        {/* Variant Builder */}
+        {/* Giá nhập */}
         <div>
-          <label className="block font-semibold">Phân loại sản phẩm:</label>
-          <VariantBuilder onVariantsChange={(data) => setVariants(data)} />
+          <label className="block mb-2 text-lg font-semibold text-orange-700">
+            Giá nhập (VNĐ):
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={1000}
+            value={priceIn}
+            onChange={(e) => setPriceIn(e.target.value)}
+            placeholder="Nhập giá nhập"
+            required
+            className="w-full rounded-lg border border-orange-300 px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-400 shadow-md transition"
+          />
         </div>
 
+        {/* Variant */}
+        <div>
+          <label className="block mb-2 text-lg font-semibold text-orange-700">
+            Phân loại sản phẩm:
+          </label>
+          <VariantBuilder onVariantsChange={setVariants} />
+        </div>
+
+        {/* Submit */}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-[#ff8000] text-white px-4 py-2 rounded disabled:opacity-50"
+          className="w-full py-4 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 text-white text-xl font-bold rounded-xl shadow-lg hover:from-orange-600 hover:via-orange-700 hover:to-orange-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Đang thêm sản phẩm..." : "Thêm sản phẩm mới"}
         </button>
