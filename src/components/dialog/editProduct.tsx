@@ -1,11 +1,7 @@
 "use client";
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 import VariantEdit, { Variant } from "./form/variantEdit";
 import {
   API_GET_Edit_PRODUCT,
@@ -14,7 +10,16 @@ import {
   BASE_URL,
 } from "../../config";
 
-/* ---------- types ---------- */
+// Tooltip component
+const Tooltip: React.FC<{ message: string }> = ({ message }) => (
+  <span className="relative group ml-2 cursor-pointer align-middle">
+    <ExclamationTriangleIcon className="h-5 w-5 text-red-500 animate-pulse" />
+    <span className="absolute z-10 left-1/2 -translate-x-1/2 mt-2 w-max min-w-[120px] bg-red-500 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-pre-line">
+      {message}
+    </span>
+  </span>
+);
+
 interface EditProductProps {
   productId: string;
   onClose: () => void;
@@ -34,14 +39,13 @@ interface ProductData {
   priceIn: number;
   description: string;
   variants: Variant[];
-  isOnSale: boolean;      // 👈 mới
-  discount: number;       // (tuỳ cần hiển thị)
+  isOnSale: boolean;
+  discount: number;
 }
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
-/* ---------- component ---------- */
 const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
-  /* ---------- state ---------- */
   const [product, setProduct] = useState<ProductData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [imageSlots, setImageSlots] = useState<(File | null)[]>(Array(6).fill(null));
@@ -50,18 +54,18 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attemptSubmit, setAttemptSubmit] = useState(false);
+  const [changedIndexes, setChangedIndexes] = useState<number[]>([]);
 
- /* ---------- thêm state để nhớ vị trí ảnh đổi ---------- */
- const [changedIndexes, setChangedIndexes] = useState<number[]>([]);
+  // Validate state
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    description?: string;
+    priceIn?: string;
+    images?: string;
+    variants?: string;
+  }>({});
 
-
-  /* ---------- derived ---------- */
-  const isVariantsValid = useMemo(
-    () => !!product && product.variants.every(v => v.price >= 1000 && v.quantity >= 0),
-    [product],
-  );
-
-  /* ---------- load categories ---------- */
+  // Load categories
   useEffect(() => {
     (async () => {
       try {
@@ -77,53 +81,123 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
     })();
   }, []);
 
-  /* ---------- load product ---------- */
-  /* ---------- load product ---------- */
-useEffect(() => {
-  (async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res  = await fetch(`${API_GET_Edit_PRODUCT}/${productId}`);
-      if (!res.ok) throw new Error(`Status ${res.status}`);
-      const data = await res.json();
+  // Load product
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_GET_Edit_PRODUCT}/${productId}`);
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
 
-      /* ①  Nếu sản phẩm đang giảm giá → show dialog rồi thoát */
-      if (data.isOnSale) {
-        window.alert("Sản phẩm đang giảm giá, không thể chỉnh sửa!"); // dùng bất kỳ UI dialog nào bạn muốn
-        onClose();                         // đóng ngay form
-        return;
+        if (data.isOnSale) {
+          window.alert("Sản phẩm đang giảm giá, không thể chỉnh sửa!");
+          onClose();
+          return;
+        }
+
+        const prod: ProductData = {
+          id: data.id,
+          images: data.images || [],
+          name: data.name || "",
+          category_id: data.category || "",
+          priceIn: data.priceIn || 0,
+          description: data.description || "",
+          variants: Array.isArray(data.variants) ? data.variants : [],
+          isOnSale: data.isOnSale,
+          discount: data.discount,
+        };
+
+        setProduct(prod);
+
+        const previews = prod.images.map(src => `${BASE_URL}${src}`);
+        setImagePreviews([...previews, ...Array(6 - previews.length).fill("")]);
+      } catch (e: any) {
+        console.error(e);
+        setError(e.message);
+      } finally {
+        setLoading(false);
       }
+    })();
+  }, [productId, onClose]);
 
-      /* ②  Map dữ liệu như cũ */
-      const prod: ProductData = {
-        id          : data.id,
-        images      : data.images || [],
-        name        : data.name || "",
-        category_id : data.category || "",
-        priceIn     : data.priceIn || 0,
-        description : data.description || "",
-        variants    : Array.isArray(data.variants) ? data.variants : [],
-        isOnSale    : data.isOnSale,
-        discount    : data.discount,
-      };
+  // Validate all fields
+  const validateAll = useCallback(() => {
+    if (!product) return false;
+    const newErrors: typeof fieldErrors = {};
 
-      setProduct(prod);
-
-      const previews = prod.images.map(src => `${BASE_URL}${src}`);
-      setImagePreviews([...previews, ...Array(6 - previews.length).fill("")]);
-    } catch (e: any) {
-      console.error(e);
-      setError(e.message);
-    } finally {
-      setLoading(false);
+    // Validate images
+    const hasImage = imagePreviews.some((src, i) => src || imageSlots[i]);
+    if (!hasImage) {
+      newErrors.images = "Vui lòng chọn ít nhất 1 hình ảnh.";
+    } else {
+      for (let i = 0; i < imageSlots.length; i++) {
+        const file = imageSlots[i];
+        if (file) {
+          if (!file.type.startsWith("image/")) {
+            newErrors.images = "Chỉ chấp nhận file ảnh.";
+            break;
+          }
+          if (file.size > MAX_IMAGE_SIZE) {
+            newErrors.images = "Mỗi ảnh phải nhỏ hơn 5MB.";
+            break;
+          }
+        }
+      }
     }
-  })();
-}, [productId, onClose]);
 
+    // Validate name
+    if (!product.name.trim()) {
+      newErrors.name = "Tên sản phẩm không được để trống.";
+    } else if (product.name.length < 15) {
+      newErrors.name = "Tên sản phẩm phải từ 15 ký tự.";
+    }
 
-  /* ---------- handlers ---------- */
-  /** nhận variants mới từ VariantEdit */
+    // Validate description
+    if (!product.description.trim()) {
+      newErrors.description = "Mô tả không được để trống.";
+    } else if (product.description.length < 10) {
+      newErrors.description = "Mô tả phải từ 10 ký tự.";
+    }
+
+    // Validate priceIn
+    if (product.priceIn === undefined || product.priceIn === null) {
+      newErrors.priceIn = "Giá nhập không được để trống.";
+    } else if (isNaN(Number(product.priceIn)) || Number(product.priceIn) < 0) {
+      newErrors.priceIn = "Giá nhập phải là số dương.";
+    }
+
+    // Validate variants
+    if (!product.variants.length) {
+      newErrors.variants = "Vui lòng thêm ít nhất 1 phân loại.";
+    } else {
+      const priceInNumber = Number(product.priceIn);
+      for (const v of product.variants) {
+        if (!v.size || !v.color) {
+          newErrors.variants = "Mỗi phân loại phải có size và màu.";
+          break;
+        }
+        if (v.quantity < 0 || isNaN(Number(v.quantity))) {
+          newErrors.variants = "Số lượng phải là số >= 0.";
+          break;
+        }
+        if (v.price < 0 || isNaN(Number(v.price))) {
+          newErrors.variants = "Giá phải là số >= 0.";
+          break;
+        }
+        if (!isNaN(priceInNumber) && v.price < priceInNumber) {
+          newErrors.variants = "Giá bán của mỗi phân loại không được nhỏ hơn giá nhập!";
+          break;
+        }
+      }
+    }
+
+    setFieldErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [product, imagePreviews, imageSlots]);
+
+  // Handlers
   const handleVariantsChange = useCallback((variants: Variant[]) => {
     setProduct(prev => (prev ? { ...prev, variants } : prev));
   }, []);
@@ -135,88 +209,74 @@ useEffect(() => {
     [],
   );
 
+  const handleFileChange = useCallback(
+    (index: number, file: File) => {
+      setImageSlots(p => {
+        const next = [...p];
+        next[index] = file;
+        return next;
+      });
+      setChangedIndexes(p => (p.includes(index) ? p : [...p, index]));
+      setImagePreviews(p => {
+        const next = [...p];
+        next[index] = URL.createObjectURL(file);
+        return next;
+      });
+    },
+    [],
+  );
 
-/* ---------- khi chọn ảnh ---------- */
-const handleFileChange = useCallback(
-  (index: number, file: File) => {
-    setImageSlots(p => {
-      const next = [...p];
-      next[index] = file;
-      return next;
-    });
+  // Submit
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
 
-    /* đánh dấu vị trí vừa đổi */
-    setChangedIndexes(p => (p.includes(index) ? p : [...p, index]));
-    console.log("chae " + index)
-    /* preview */
-    setImagePreviews(p => {
-      const next = [...p];
-      next[index] = URL.createObjectURL(file);
-      return next;
-    });
-  },
-  [],
-);
+    if (!validateAll()) {
+      setAttemptSubmit(true);
+      return;
+    }
 
+    setSubmitting(true); setError(null);
 
-  /* ---------- submit ---------- */
-/* ---------- submit ---------- */
-/* ---------- submit ---------- */
-const handleSubmit = useCallback(async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!product) return;
+    try {
+      const token = localStorage.getItem("tkn");
+      const fd = new FormData();
 
-  if (!isVariantsValid) { setAttemptSubmit(true); return; }
+      fd.append("name", product.name);
+      fd.append("category_id", product.category_id);
+      fd.append("priceIn", String(product.priceIn));
+      fd.append("description", product.description);
+      fd.append("variants", JSON.stringify(product.variants));
 
-  setSubmitting(true); setError(null);
+      const sorted = [...changedIndexes].sort((a, b) => a - b);
+      sorted.forEach(idx => fd.append("imageIndex", String(idx)));
+      sorted.forEach(idx => {
+        const file = imageSlots[idx];
+        if (file) fd.append("images", file, file.name);
+      });
 
-  try {
-    const token = localStorage.getItem("tkn");
-    const fd    = new FormData();
+      const res = await fetch(`${PUT_EDIT_PRODUCT}/${productId}`, {
+        method: "PUT",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
 
-    // ----- field text / JSON -----
-    fd.append("name",        product.name);
-    fd.append("category_id", product.category_id);
-    fd.append("priceIn",    String(product.priceIn));
-    fd.append("description", product.description);
-    fd.append("variants",    JSON.stringify(product.variants));
+      const ct = res.headers.get("content-type") || "";
+      const body = ct.includes("application/json") ? await res.json()
+        : { message: await res.text() };
 
-    // ----- images (index fields trước – files sau) -----
-    const sorted = [...changedIndexes].sort((a, b) => a - b);
+      if (!res.ok) throw new Error(body.message || `Status ${res.status}`);
 
-    /* ① index fields */
-    sorted.forEach(idx => fd.append("imageIndex", String(idx)));
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Có lỗi xảy ra khi cập nhật sản phẩm");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [product, imageSlots, changedIndexes, productId, onClose, validateAll]);
 
-    /* ② files khớp thứ tự chỉ số */
-    sorted.forEach(idx => {
-      const file = imageSlots[idx];
-      if (file) fd.append("images", file, file.name);
-    });
-
-    const res = await fetch(`${PUT_EDIT_PRODUCT}/${productId}`, {
-      method : "PUT",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body   : fd,
-    });
-
-    const ct   = res.headers.get("content-type") || "";
-    const body = ct.includes("application/json") ? await res.json()
-                                                 : { message: await res.text() };
-
-    if (!res.ok) throw new Error(body.message || `Status ${res.status}`);
-
-    onClose();          // ✅ thành công
-  } catch (err: any) {
-    console.error(err);
-    setError(err.message || "Có lỗi xảy ra khi cập nhật sản phẩm");
-  } finally {
-    setSubmitting(false);
-  }
-}, [product, imageSlots, changedIndexes, isVariantsValid, productId, onClose]);
-
-
-
-  /* ---------- UI ---------- */
+  // UI
   if (loading) return <div>Đang tải thông tin sản phẩm...</div>;
   if (!product) return <div>Không tìm thấy sản phẩm.</div>;
 
@@ -240,7 +300,10 @@ const handleSubmit = useCallback(async (e: React.FormEvent) => {
         <form onSubmit={handleSubmit} encType="multipart/form-data">
           {/* ---------- images ---------- */}
           <div className="mb-4">
-            <label className="block font-medium mb-1">Hình ảnh (tối đa 6)</label>
+            <div className="flex items-center mb-1">
+              <label className="block font-medium">Hình ảnh (tối đa 6)</label>
+              {fieldErrors.images && <Tooltip message={fieldErrors.images} />}
+            </div>
             <div className="grid grid-cols-6 gap-2">
               {imagePreviews.map((src, idx) => (
                 <div
@@ -291,7 +354,10 @@ const handleSubmit = useCallback(async (e: React.FormEvent) => {
           {/* ---------- basic ---------- */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block font-medium mb-1">Tên sản phẩm</label>
+              <div className="flex items-center mb-1">
+                <label className="block font-medium">Tên sản phẩm</label>
+                {fieldErrors.name && <Tooltip message={fieldErrors.name} />}
+              </div>
               <input
                 type="text"
                 value={product.name}
@@ -302,9 +368,12 @@ const handleSubmit = useCallback(async (e: React.FormEvent) => {
             </div>
 
             <div>
-              <label className="block font-medium mb-1">
-                Giá nhập (vnđ)
-              </label>
+              <div className="flex items-center mb-1">
+                <label className="block font-medium">
+                  Giá nhập (vnđ)
+                </label>
+                {fieldErrors.priceIn && <Tooltip message={fieldErrors.priceIn} />}
+              </div>
               <input
                 type="number"
                 value={product.priceIn}
@@ -318,7 +387,10 @@ const handleSubmit = useCallback(async (e: React.FormEvent) => {
 
           {/* ---------- description ---------- */}
           <div className="mb-4">
-            <label className="block font-medium mb-1">Mô tả</label>
+            <div className="flex items-center mb-1">
+              <label className="block font-medium">Mô tả</label>
+              {fieldErrors.description && <Tooltip message={fieldErrors.description} />}
+            </div>
             <textarea
               value={product.description}
               onChange={e => handleFieldChange("description", e.target.value)}
@@ -328,11 +400,18 @@ const handleSubmit = useCallback(async (e: React.FormEvent) => {
           </div>
 
           {/* ---------- variants ---------- */}
-          <VariantEdit
-            initialVariants={product.variants}
-            onVariantsChange={handleVariantsChange}
-            showAllErrors={attemptSubmit}
-          />
+          <div className="mb-4">
+            <div className="flex items-center mb-1">
+              <label className="block font-medium">Phân loại sản phẩm</label>
+              {fieldErrors.variants && <Tooltip message={fieldErrors.variants} />}
+            </div>
+            <VariantEdit
+              initialVariants={product.variants}
+              onVariantsChange={handleVariantsChange}
+              priceIn={product.priceIn}
+              showAllErrors={attemptSubmit}
+            />
+          </div>
 
           {/* ---------- actions ---------- */}
           <div className="mt-6 flex justify-end space-x-2">
@@ -346,7 +425,7 @@ const handleSubmit = useCallback(async (e: React.FormEvent) => {
             </button>
             <button
               type="submit"
-              disabled={submitting || !isVariantsValid}
+              disabled={submitting}
               className="px-4 py-2 bg-[#ff8000] text-white rounded disabled:opacity-50"
             >
               {submitting ? "Đang lưu..." : "Lưu thay đổi"}
