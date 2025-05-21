@@ -19,7 +19,8 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
   const [newSize, setNewSize] = useState("");
   const [newColor, setNewColor] = useState("");
   const [variantData, setVariantData] = useState<Variant[]>([]);
-
+const [sizeError, setSizeError] = useState<string>("");
+const [colorError, setColorError] = useState<string>("");
   // Cập nhật variantData dựa trên sizes và colors
   const updateVariantData = (
     newSizes: string[],
@@ -60,34 +61,62 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
   };
 
   // Thêm size mới
-  const handleAddSize = () => {
-    const trimmed = newSize.trim();
-    if (trimmed === "") {
-      alert("Size không được để trống!");
-      return;
-    }
-    if (!sizes.includes(trimmed)) {
-      setSizes([...sizes, trimmed]);
-      setNewSize("");
-    } else {
-      alert("Size này đã tồn tại!");
-    }
-  };
+// Validate và format size
+const validateAndFormatSize = (size: string): string => {
+  return size.toUpperCase();
+};
 
-  // Thêm color mới
-  const handleAddColor = () => {
-    const trimmed = newColor.trim();
-    if (trimmed === "") {
-      alert("Màu sắc không được để trống!");
-      return;
-    }
-    if (!colors.includes(trimmed)) {
-      setColors([...colors, trimmed]);
-      setNewColor("");
-    } else {
-      alert("Màu sắc này đã tồn tại!");
-    }
-  };
+// Validate và format color
+const validateAndFormatColor = (color: string): string => {
+  return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+};
+
+  // Thêm size mới
+const handleAddSize = () => {
+  const trimmed = newSize.trim();
+  if (trimmed === "") {
+    setSizeError("Size không được để trống!");
+    return;
+  }
+  const formattedSize = validateAndFormatSize(trimmed);
+  if (sizes.includes(formattedSize)) {
+    setSizeError("Size này đã tồn tại!");
+    return;
+  }
+  setSizes([...sizes, formattedSize]);
+  setNewSize("");
+  setSizeError(""); // Xóa lỗi khi thêm thành công
+};
+
+const handleAddColor = () => {
+  const trimmed = newColor.trim();
+  if (trimmed === "") {
+    setColorError("Màu sắc không được để trống!");
+    return;
+  }
+  const formattedColor = validateAndFormatColor(trimmed);
+  if (colors.includes(formattedColor)) {
+    setColorError("Màu sắc này đã tồn tại!");
+    return;
+  }
+  setColors([...colors, formattedColor]);
+  setNewColor("");
+  setColorError(""); // Xóa lỗi khi thêm thành công
+};
+
+const handleSizeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = e.target.value;
+  setNewSize(validateAndFormatSize(value));
+  if (sizeError) setSizeError("");
+};
+
+const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = e.target.value;
+  setNewColor(validateAndFormatColor(value));
+  if (colorError) setColorError("");
+};
+
+
 
   return (
     <div className="space-y-4">
@@ -98,7 +127,7 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
           <input
             type="text"
             value={newSize}
-            onChange={(e) => setNewSize(e.target.value)}
+            onChange={handleSizeInputChange}
             placeholder="Nhập size"
             className="border p-1 rounded mr-2"
           />
@@ -110,6 +139,8 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
             <PlusIcon className="h-4 w-4" />
           </button>
         </div>
+        {sizeError && <div className="text-red-500 text-sm mt-1">{sizeError}</div>}
+
         <div className="flex flex-wrap gap-2">
           {sizes.map((size, index) => (
             <div key={index} className="border p-1 rounded flex items-center">
@@ -133,7 +164,7 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
           <input
             type="text"
             value={newColor}
-            onChange={(e) => setNewColor(e.target.value)}
+            onChange={handleColorInputChange}
             placeholder="Nhập màu sắc"
             className="border p-1 rounded mr-2"
           />
@@ -145,6 +176,7 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
             <PlusIcon className="h-4 w-4" />
           </button>
         </div>
+        {colorError && <div className="text-red-500 text-sm mt-1">{colorError}</div>}
         <div className="flex flex-wrap gap-2">
           {colors.map((color, index) => (
             <div key={index} className="border p-1 rounded flex items-center">

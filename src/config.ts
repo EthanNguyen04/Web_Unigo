@@ -1,7 +1,7 @@
 // config.ts
 
 // Địa chỉ base của API
-export const BASE_URL = "http://192.168.1.3:3001";
+export const BASE_URL = "http://192.168.1.6:3001";
 
 // Các endpoint liên quan
 export const API_ADD_PRODUCT = `${BASE_URL}/manager/add_product`;

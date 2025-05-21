@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ClipboardDocumentIcon,
-  XMarkIcon,
   PencilIcon,
   AdjustmentsHorizontalIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import AddProduct from "../dialog/addProduct";
 import EditProduct from "../dialog/editProduct";
@@ -13,7 +13,6 @@ import { API_PRODUCT_MANAGER } from "../../config";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
 interface Product {
   id: string;
@@ -126,7 +125,14 @@ const ProductManagement: React.FC = () => {
     return f.format(+priceStr);
   };
 
-  const mapStatus = (s: string) => (s === "dang_ban" ? "Đang bán" : s === "ngung_ban" ? "Ngừng bán" : s);
+  const mapStatus = (s: string) =>
+    s === "dang_ban"
+      ? "Đang bán"
+      : s === "ngung_ban"
+      ? "Ngừng bán"
+      : s === "het_hang"
+      ? "Hết hàng"
+      : s;
 
   if (loading) return <div className="text-center py-10 text-[#ff8000] font-semibold">Đang tải dữ liệu...</div>;
 
@@ -141,7 +147,7 @@ const ProductManagement: React.FC = () => {
       Phân_loại: p.category,
       Giá: p.price,
       Kho: p.totalQuantity,
-      Trạng_thái: p.status === "dang_ban" ? "Đang bán" : "Ngừng bán",
+      Trạng_thái: mapStatus(p.status),
       Giảm_giá: p.discount > 0 ? `${p.discount}%` : "Không",
     }));
     const worksheet = XLSX.utils.json_to_sheet(data);
@@ -169,7 +175,7 @@ const ProductManagement: React.FC = () => {
         p.category,
         p.price,
         p.totalQuantity,
-        p.status === "dang_ban" ? "Đang bán" : "Ngừng bán",
+        mapStatus(p.status),
         p.discount > 0 ? `${p.discount}%` : "Không",
       ];
       tableRows.push(rowData);
@@ -223,6 +229,7 @@ const ProductManagement: React.FC = () => {
             <option value="all">Tất cả</option>
             <option value="dang_ban">Đang bán</option>
             <option value="ngung_ban">Ngừng bán</option>
+            <option value="het_hang">Hết hàng</option>
           </select>
         </div>
         <div className="flex items-center gap-2">
@@ -260,15 +267,32 @@ const ProductManagement: React.FC = () => {
             {filteredProducts.map(p => {
               const shortId = p.id.slice(-5);
               const editDisabled = p.discount > 0;
+              const isOutOfStock = p.status === "het_hang";
               return (
-                <tr key={p.id} className="hover:bg-gray-50">
+                <tr
+                  key={p.id}
+                  className={
+                    isOutOfStock
+                      ? "bg-yellow-100 font-bold text-red-600 animate-pulse"
+                      : "hover:bg-gray-50"
+                  }
+                >
                   <td className="p-3 flex items-center gap-1">
                     ...{shortId}
                     <button onClick={() => handleCopyId(p.id)}>
                       <ClipboardDocumentIcon className="h-4 w-4 text-[#ff8000]" />
                     </button>
                   </td>
-                  <td className="p-3 font-medium">{p.name}</td>
+                  <td className="p-3 font-medium flex items-center gap-1">
+                    {p.name}
+                    {isOutOfStock && (
+                      <span title="Hết hàng" className="ml-1">
+                        <svg className="inline h-5 w-5 text-red-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                        </svg>
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3">{p.category}</td>
                   <td className="p-3 flex justify-between items-center">
                     <span>{formatPrice(p.price)}</span>
@@ -318,6 +342,11 @@ const ProductManagement: React.FC = () => {
               Bán lại
             </button>
           )}
+          {statusMenu.product.status === "het_hang" && (
+            <button onClick={() => updateStatus("ngung_ban")} className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded">
+              Ngừng bán
+            </button>
+          )}
         </div>
       )}
 
@@ -325,17 +354,12 @@ const ProductManagement: React.FC = () => {
 
       {showAddProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-[95%] bg-white p-6 rounded-lg shadow-lg max-h-[90vh] overflow-auto">
-            <button onClick={() => setShowAddProduct(false)} className="absolute top-2 right-2 text-red-500">
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-            <AddProduct
-              onClose={() => {
-                setShowAddProduct(false);
-                fetchProducts();
-              }}
-            />
-          </div>
+          <AddProduct
+            onClose={() => {
+              setShowAddProduct(false);
+              fetchProducts();
+            }}
+          />
         </div>
       )}
     </div>
