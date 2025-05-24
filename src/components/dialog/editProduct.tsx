@@ -36,11 +36,13 @@ interface ProductData {
   images: string[];
   name: string;
   category_id: string;
-  priceIn: number;
   description: string;
   variants: Variant[];
   isOnSale: boolean;
   discount: number;
+  totalQuantity: number;
+  totalSold: number;
+  status: boolean;
 }
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -60,7 +62,6 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
   const [fieldErrors, setFieldErrors] = useState<{
     name?: string;
     description?: string;
-    priceIn?: string;
     images?: string;
     variants?: string;
   }>({});
@@ -102,11 +103,13 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
           images: data.images || [],
           name: data.name || "",
           category_id: data.category || "",
-          priceIn: data.priceIn || 0,
           description: data.description || "",
           variants: Array.isArray(data.variants) ? data.variants : [],
           isOnSale: data.isOnSale,
           discount: data.discount,
+          totalQuantity: data.totalQuantity || 0,
+          totalSold: data.totalSold || 0,
+          status: data.status
         };
 
         setProduct(prod);
@@ -161,18 +164,10 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
       newErrors.description = "Mô tả phải từ 10 ký tự.";
     }
 
-    // Validate priceIn
-    if (product.priceIn === undefined || product.priceIn === null) {
-      newErrors.priceIn = "Giá nhập không được để trống.";
-    } else if (isNaN(Number(product.priceIn)) || Number(product.priceIn) < 0) {
-      newErrors.priceIn = "Giá nhập phải là số dương.";
-    }
-
     // Validate variants
     if (!product.variants.length) {
       newErrors.variants = "Vui lòng thêm ít nhất 1 phân loại.";
     } else {
-      const priceInNumber = Number(product.priceIn);
       for (const v of product.variants) {
         if (!v.size || !v.color) {
           newErrors.variants = "Mỗi phân loại phải có size và màu.";
@@ -184,10 +179,6 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
         }
         if (v.price < 0 || isNaN(Number(v.price))) {
           newErrors.variants = "Giá phải là số >= 0.";
-          break;
-        }
-        if (!isNaN(priceInNumber) && v.price < priceInNumber) {
-          newErrors.variants = "Giá bán của mỗi phân loại không được nhỏ hơn giá nhập!";
           break;
         }
       }
@@ -236,36 +227,54 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
       return;
     }
 
-    setSubmitting(true); setError(null);
+    setSubmitting(true);
+    setError(null);
 
     try {
       const token = localStorage.getItem("tkn");
       const fd = new FormData();
 
+      // 1. Thêm các trường cơ bản
       fd.append("name", product.name);
       fd.append("category_id", product.category_id);
-      fd.append("priceIn", String(product.priceIn));
       fd.append("description", product.description);
-      fd.append("variants", JSON.stringify(product.variants));
 
-      const sorted = [...changedIndexes].sort((a, b) => a - b);
-      sorted.forEach(idx => fd.append("imageIndex", String(idx)));
-      sorted.forEach(idx => {
-        const file = imageSlots[idx];
-        if (file) fd.append("images", file, file.name);
-      });
+      // 2. Thêm variants
+      const variantsData = product.variants.map(v => ({
+        size: v.size,
+        color: v.color,
+        price: Number(v.price),
+        quantity: Number(v.quantity),
+        priceIn: Number(v.priceIn)
+      }));
+      fd.append("variants", JSON.stringify(variantsData));
 
+      // 3. Xử lý ảnh
+      if (changedIndexes.length > 0) {
+        const sorted = [...changedIndexes].sort((a, b) => a - b);
+        
+        // Thêm ảnh và index tương ứng
+        sorted.forEach(idx => {
+          const file = imageSlots[idx];
+          if (file) {
+            fd.append("images", file);
+            fd.append("imageIndex", String(idx));
+          }
+        });
+      }
+
+      // 4. Gửi request
       const res = await fetch(`${PUT_EDIT_PRODUCT}/${productId}`, {
         method: "PUT",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
       });
 
-      const ct = res.headers.get("content-type") || "";
-      const body = ct.includes("application/json") ? await res.json()
-        : { message: await res.text() };
+      const data = await res.json();
 
-      if (!res.ok) throw new Error(body.message || `Status ${res.status}`);
+      if (!res.ok) {
+        throw new Error(data.message || `Status ${res.status}`);
+      }
 
       onClose();
     } catch (err: any) {
@@ -366,23 +375,6 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
                 required
               />
             </div>
-
-            <div>
-              <div className="flex items-center mb-1">
-                <label className="block font-medium">
-                  Giá nhập (vnđ)
-                </label>
-                {fieldErrors.priceIn && <Tooltip message={fieldErrors.priceIn} />}
-              </div>
-              <input
-                type="number"
-                value={product.priceIn}
-                onChange={e =>
-                  handleFieldChange("priceIn", Number(e.target.value))
-                }
-                className="w-full border p-2 rounded"
-              />
-            </div>
           </div>
 
           {/* ---------- description ---------- */}
@@ -408,7 +400,6 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
             <VariantEdit
               initialVariants={product.variants}
               onVariantsChange={handleVariantsChange}
-              priceIn={product.priceIn}
               showAllErrors={attemptSubmit}
             />
           </div>

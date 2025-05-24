@@ -7,19 +7,18 @@ export interface Variant {
   color: string;
   quantity: number;
   price: number;
+  priceIn: number;
 }
 
 interface VariantEditProps {
   initialVariants: Variant[];
   onVariantsChange: (variants: Variant[]) => void;
-  priceIn: number;
   showAllErrors?: boolean;
 }
 
 const VariantEdit: React.FC<VariantEditProps> = ({
   initialVariants,
   onVariantsChange,
-  priceIn,
   showAllErrors,
 }) => {
   const [sizes, setSizes] = useState<string[]>(() =>
@@ -40,11 +39,11 @@ const VariantEdit: React.FC<VariantEditProps> = ({
   // track errors and touched fields
   const [errors, setErrors] = useState<Record<
     number,
-    { quantity?: boolean; price?: boolean }
+    { quantity?: boolean; price?: boolean; priceIn?: boolean }
   >>({});
   const [touched, setTouched] = useState<Record<
     number,
-    { quantity?: boolean; price?: boolean }
+    { quantity?: boolean; price?: boolean; priceIn?: boolean }
   >>({});
 
   // Format size: always uppercase
@@ -62,7 +61,13 @@ const VariantEdit: React.FC<VariantEditProps> = ({
             (v) => v.size === size && v.color === color
           );
           combos.push(
-            existing ? { ...existing } : { size, color, quantity: 0, price: 0 }
+            existing || { 
+              size, 
+              color, 
+              quantity: 0, 
+              price: 0, 
+              priceIn: 0 
+            }
           );
         })
       );
@@ -121,7 +126,7 @@ const VariantEdit: React.FC<VariantEditProps> = ({
   );
 
   const validate = useCallback(
-    (index: number, field: "quantity" | "price", value: number) => {
+    (index: number, field: "quantity" | "price" | "priceIn", value: number) => {
       setErrors((prev) => ({
         ...prev,
         [index]: {
@@ -129,15 +134,17 @@ const VariantEdit: React.FC<VariantEditProps> = ({
           [field]:
             field === "quantity"
               ? value < 0
-              : value < priceIn || value < 0 || isNaN(value),
+              : field === "price"
+              ? value < 0 || isNaN(value)
+              : value < 0 || isNaN(value),
         },
       }));
     },
-    [priceIn]
+    []
   );
 
   const markTouched = useCallback(
-    (index: number, field: "quantity" | "price") => {
+    (index: number, field: "quantity" | "price" | "priceIn") => {
       setTouched((prev) => ({
         ...prev,
         [index]: { ...prev[index], [field]: true },
@@ -147,7 +154,7 @@ const VariantEdit: React.FC<VariantEditProps> = ({
   );
 
   const handleVariantChange = useCallback(
-    (index: number, field: "quantity" | "price", raw: number) => {
+    (index: number, field: "quantity" | "price" | "priceIn", raw: number) => {
       const value = isNaN(raw) ? 0 : Math.floor(raw);
       setVariantData((prev) => {
         const next = [...prev];
@@ -163,7 +170,10 @@ const VariantEdit: React.FC<VariantEditProps> = ({
   );
 
   const formatNumber = useCallback(
-    (num: number) => num.toLocaleString("de-DE"),
+    (num: number | undefined | null) => {
+      if (num === undefined || num === null) return "0";
+      return num.toLocaleString("de-DE");
+    },
     []
   );
 
@@ -249,58 +259,84 @@ const VariantEdit: React.FC<VariantEditProps> = ({
 
       {/* Variants Table */}
       {sizes.length > 0 && colors.length > 0 && (
-        <table className="min-w-full border-collapse">
-          <thead>
-            <tr>
-              <th className="border p-2">Size</th>
-              <th className="border p-2">Color</th>
-              <th className="border p-2">Quantity</th>
-              <th className="border p-2">Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {variantData.map((v, i) => (
-              <tr key={`${v.size}-${v.color}`} className="hover:bg-gray-50">
-                <td className="border p-2">{v.size}</td>
-                <td className="border p-2">{v.color}</td>
-                <td className="border p-2 relative">
-                  <input
-                    type="number"
-                    min={0}
-                    value={v.quantity}
-                    onBlur={() => markTouched(i, "quantity")}
-                    onChange={(e) =>
-                      handleVariantChange(i, "quantity", Number(e.target.value))
-                    }
-                    className="w-full border p-1 rounded"
-                  />
-                  {(showAllErrors || touched[i]?.quantity) && errors[i]?.quantity && (
-                    <span className="absolute top-0 right-0 text-red-500">*</span>
-                  )}
-                </td>
-                <td className="border p-2 relative">
-                  <input
-                    type="text"
-                    value={formatNumber(v.price)}
-                    onBlur={() => {
-                      markTouched(i, "price");
-                      handleVariantChange(i, "price", v.price);
-                    }}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, "");
-                      if (/^\d*$/.test(raw))
-                        handleVariantChange(i, "price", Number(raw));
-                    }}
-                    className="w-full border p-1 rounded"
-                  />
-                  {(showAllErrors || touched[i]?.price) && errors[i]?.price && (
-                    <span className="absolute top-0 right-0 text-red-500" title={`Giá phải >= ${priceIn}`}>*</span>
-                  )}
-                </td>
+        <div>
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr>
+                <th className="border p-2">Size</th>
+                <th className="border p-2">Màu</th>
+                <th className="border p-2">Số lượng</th>
+                <th className="border p-2">
+                  Giá nhập <span className="text-sm font-normal">(VND)</span>
+                </th>
+                <th className="border p-2">
+                  Giá bán <span className="text-sm font-normal">(VND)</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {variantData.map((v, i) => (
+                <tr key={`${v.size}-${v.color}`} className="hover:bg-gray-50">
+                  <td className="border p-2">{v.size}</td>
+                  <td className="border p-2">{v.color}</td>
+                  <td className="border p-2 relative">
+                    <input
+                      type="number"
+                      min={0}
+                      value={v.quantity}
+                      onBlur={() => markTouched(i, "quantity")}
+                      onChange={(e) =>
+                        handleVariantChange(i, "quantity", Number(e.target.value))
+                      }
+                      className="w-full border p-1 rounded"
+                    />
+                    {(showAllErrors || touched[i]?.quantity) && errors[i]?.quantity && (
+                      <span className="absolute top-0 right-0 text-red-500">*</span>
+                    )}
+                  </td>
+                  <td className="border p-2 relative">
+                    <input
+                      type="text"
+                      value={formatNumber(v.priceIn)}
+                      onBlur={() => {
+                        markTouched(i, "priceIn");
+                        handleVariantChange(i, "priceIn", v.priceIn);
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        if (/^\d*$/.test(raw))
+                          handleVariantChange(i, "priceIn", Number(raw));
+                      }}
+                      className="w-full border p-1 rounded"
+                    />
+                    {(showAllErrors || touched[i]?.priceIn) && errors[i]?.priceIn && (
+                      <span className="absolute top-0 right-0 text-red-500">*</span>
+                    )}
+                  </td>
+                  <td className="border p-2 relative">
+                    <input
+                      type="text"
+                      value={formatNumber(v.price)}
+                      onBlur={() => {
+                        markTouched(i, "price");
+                        handleVariantChange(i, "price", v.price);
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        if (/^\d*$/.test(raw))
+                          handleVariantChange(i, "price", Number(raw));
+                      }}
+                      className="w-full border p-1 rounded"
+                    />
+                    {(showAllErrors || touched[i]?.price) && errors[i]?.price && (
+                      <span className="absolute top-0 right-0 text-red-500">*</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

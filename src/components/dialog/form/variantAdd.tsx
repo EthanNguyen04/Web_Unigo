@@ -7,6 +7,7 @@ export interface Variant {
   color: string;
   quantity: number;
   price: number;
+  priceIn: number;
 }
 
 interface VariantBuilderProps {
@@ -19,104 +20,82 @@ const VariantBuilder: React.FC<VariantBuilderProps> = ({ onVariantsChange }) => 
   const [newSize, setNewSize] = useState("");
   const [newColor, setNewColor] = useState("");
   const [variantData, setVariantData] = useState<Variant[]>([]);
-const [sizeError, setSizeError] = useState<string>("");
-const [colorError, setColorError] = useState<string>("");
-  // Cập nhật variantData dựa trên sizes và colors
-  const updateVariantData = (
-    newSizes: string[],
-    newColors: string[],
-    currentData: Variant[]
-  ): Variant[] => {
-    const combinations: Variant[] = [];
-    newSizes.forEach((size) => {
-      newColors.forEach((color) => {
-        const existing = currentData.find((v) => v.size === size && v.color === color);
-        if (existing) {
-          combinations.push(existing);
-        } else {
-          combinations.push({ size, color, quantity: 0, price: 0 });
-        }
-      });
-    });
-    return combinations;
-  };
+  const [sizeError, setSizeError] = useState<string>("");
+  const [colorError, setColorError] = useState<string>("");
 
-  // Khi sizes hoặc colors thay đổi, cập nhật variantData
+  // Format size/collor
+  const formatSize = (s: string) => s.trim().toUpperCase();
+  const formatColor = (c: string) =>
+    c.trim().charAt(0).toUpperCase() + c.trim().slice(1).toLowerCase();
+
+  // Update variantData khi size/color thay đổi
   useEffect(() => {
-    const newData = updateVariantData(sizes, colors, variantData);
-    setVariantData(newData);
-    onVariantsChange(newData);
+    const combos: Variant[] = [];
+    sizes.forEach((size) =>
+      colors.forEach((color) => {
+        const exist = variantData.find(
+          (v) => v.size === size && v.color === color
+        );
+        combos.push(
+          exist
+            ? exist
+            : { size, color, quantity: 0, price: 0, priceIn: 0 }
+        );
+      })
+    );
+    setVariantData(combos);
+    onVariantsChange(combos);
+    // eslint-disable-next-line
   }, [sizes, colors]);
 
-  // Xử lý thay đổi cho bảng variants
+  // Khi variantData thay đổi (số lượng, giá...), cập nhật lên cha
+  useEffect(() => {
+    onVariantsChange(variantData);
+    // eslint-disable-next-line
+  }, [variantData]);
+
+  // Thêm size
+  const handleAddSize = () => {
+    const val = formatSize(newSize);
+    if (!val) {
+      setSizeError("Size không được để trống!");
+      return;
+    }
+    if (sizes.includes(val)) {
+      setSizeError("Size này đã tồn tại!");
+      return;
+    }
+    setSizes([...sizes, val]);
+    setNewSize("");
+    setSizeError("");
+  };
+
+  // Thêm color
+  const handleAddColor = () => {
+    const val = formatColor(newColor);
+    if (!val) {
+      setColorError("Màu sắc không được để trống!");
+      return;
+    }
+    if (colors.includes(val)) {
+      setColorError("Màu sắc này đã tồn tại!");
+      return;
+    }
+    setColors([...colors, val]);
+    setNewColor("");
+    setColorError("");
+  };
+
+  // Xử lý thay đổi input variant
   const handleVariantChange = (
     index: number,
-    field: "quantity" | "price",
+    field: "quantity" | "price" | "priceIn",
     value: number
   ) => {
     const updated = [...variantData];
     updated[index] = { ...updated[index], [field]: value < 0 ? 0 : value };
     setVariantData(updated);
-    onVariantsChange(updated);
   };
-
-  // Thêm size mới
-// Validate và format size
-const validateAndFormatSize = (size: string): string => {
-  return size.toUpperCase();
-};
-
-// Validate và format color
-const validateAndFormatColor = (color: string): string => {
-  return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
-};
-
-  // Thêm size mới
-const handleAddSize = () => {
-  const trimmed = newSize.trim();
-  if (trimmed === "") {
-    setSizeError("Size không được để trống!");
-    return;
-  }
-  const formattedSize = validateAndFormatSize(trimmed);
-  if (sizes.includes(formattedSize)) {
-    setSizeError("Size này đã tồn tại!");
-    return;
-  }
-  setSizes([...sizes, formattedSize]);
-  setNewSize("");
-  setSizeError(""); // Xóa lỗi khi thêm thành công
-};
-
-const handleAddColor = () => {
-  const trimmed = newColor.trim();
-  if (trimmed === "") {
-    setColorError("Màu sắc không được để trống!");
-    return;
-  }
-  const formattedColor = validateAndFormatColor(trimmed);
-  if (colors.includes(formattedColor)) {
-    setColorError("Màu sắc này đã tồn tại!");
-    return;
-  }
-  setColors([...colors, formattedColor]);
-  setNewColor("");
-  setColorError(""); // Xóa lỗi khi thêm thành công
-};
-
-const handleSizeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const value = e.target.value;
-  setNewSize(validateAndFormatSize(value));
-  if (sizeError) setSizeError("");
-};
-
-const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const value = e.target.value;
-  setNewColor(validateAndFormatColor(value));
-  if (colorError) setColorError("");
-};
-
-
 
   return (
     <div className="space-y-4">
@@ -127,7 +106,10 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           <input
             type="text"
             value={newSize}
-            onChange={handleSizeInputChange}
+            onChange={(e) => {
+              setNewSize(formatSize(e.target.value));
+              if (sizeError) setSizeError("");
+            }}
             placeholder="Nhập size"
             className="border p-1 rounded mr-2"
           />
@@ -140,10 +122,9 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           </button>
         </div>
         {sizeError && <div className="text-red-500 text-sm mt-1">{sizeError}</div>}
-
         <div className="flex flex-wrap gap-2">
-          {sizes.map((size, index) => (
-            <div key={index} className="border p-1 rounded flex items-center">
+          {sizes.map((size, idx) => (
+            <div key={idx} className="border p-1 rounded flex items-center">
               <span>{size}</span>
               <button
                 type="button"
@@ -156,7 +137,6 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ))}
         </div>
       </div>
-
       {/* Nhập colors */}
       <div>
         <div className="flex items-center mb-2">
@@ -164,7 +144,10 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           <input
             type="text"
             value={newColor}
-            onChange={handleColorInputChange}
+            onChange={(e) => {
+              setNewColor(formatColor(e.target.value));
+              if (colorError) setColorError("");
+            }}
             placeholder="Nhập màu sắc"
             className="border p-1 rounded mr-2"
           />
@@ -178,8 +161,8 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         </div>
         {colorError && <div className="text-red-500 text-sm mt-1">{colorError}</div>}
         <div className="flex flex-wrap gap-2">
-          {colors.map((color, index) => (
-            <div key={index} className="border p-1 rounded flex items-center">
+          {colors.map((color, idx) => (
+            <div key={idx} className="border p-1 rounded flex items-center">
               <span>{color}</span>
               <button
                 type="button"
@@ -192,18 +175,18 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ))}
         </div>
       </div>
-
-      {/* Bảng ghép cặp variants (chỉ hiển thị khi có cả size và color) */}
+      {/* Bảng variants */}
       {sizes.length > 0 && colors.length > 0 && (
         <div>
-          <h3 className="font-semibold mb-2">Các variants</h3>
+          <h3 className="font-semibold mb-2">Các phân loại</h3>
           <table className="min-w-full border-collapse">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-2">Size</th>
                 <th className="border p-2">Màu</th>
                 <th className="border p-2">Số lượng</th>
-                <th className="border p-2">Giá (VND)</th>
+                <th className="border p-2">Giá nhập (VND)</th>
+                <th className="border p-2">Giá bán (VND)</th>
               </tr>
             </thead>
             <tbody>
@@ -218,6 +201,17 @@ const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                       value={variant.quantity}
                       onChange={(e) =>
                         handleVariantChange(index, "quantity", Number(e.target.value))
+                      }
+                      className="w-full border p-1 rounded"
+                    />
+                  </td>
+                  <td className="border p-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={variant.priceIn}
+                      onChange={(e) =>
+                        handleVariantChange(index, "priceIn", Number(e.target.value))
                       }
                       className="w-full border p-1 rounded"
                     />
