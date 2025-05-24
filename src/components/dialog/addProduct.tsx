@@ -1,13 +1,10 @@
 "use client";
-import React, { useState, useEffect,useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import VariantBuilder, { Variant } from "./form/variantAdd";
 import { API_ADD_PRODUCT, API_Get_CATEGORY } from "../../config";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
-import Picker from "@emoji-mart/react";
-import data from "@emoji-mart/data";
+import { EmojiButton } from "@joeattardi/emoji-button";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
-
 // Tooltip component
 const Tooltip: React.FC<{ message: string }> = ({ message }) => (
   <span className="relative group ml-2 cursor-pointer align-middle">
@@ -28,7 +25,6 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
-  const [priceIn, setPriceIn] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [imageSlots, setImageSlots] = useState<(File | null)[]>(Array(6).fill(null));
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>(Array(6).fill(null));
@@ -37,14 +33,30 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const pickerRef = useRef<any>(null);
+  const emojiBtnRef = useRef<HTMLButtonElement>(null);
+  const [cursorPos, setCursorPos] = useState<number>(0);
   // Error states
   const [errors, setErrors] = useState<{
     name?: string;
     description?: string;
-    priceIn?: string;
     images?: string;
     variants?: string;
   }>({});
+  const openEmojiPicker = () => {
+  if (!pickerRef.current) {
+    pickerRef.current = new EmojiButton({
+      theme: "light",
+      position: "bottom-start",
+      autoHide: false,
+      zIndex: 9999,
+    });
+    pickerRef.current.on("emoji", (selection: any) => {
+      handleSelectEmoji(selection.emoji);
+    });
+  }
+  pickerRef.current.togglePicker(emojiBtnRef.current);
+};
 
   useEffect(() => {
     async function fetchCategories() {
@@ -80,24 +92,29 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
       return updated;
     });
   };
-  // Hàm chèn emoji vào vị trí con trỏ
 
-  const handleSelectEmoji = (emoji: any) => {
-    if (!descRef.current) return;
-    const textarea = descRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const newValue =
-      description.substring(0, start) +
-      emoji.native +
-      description.substring(end);
-    setDescription(newValue);
-    setShowEmoji(false);
-    setTimeout(() => {
+  // Emoji
+const handleSelectEmoji = (emoji: string) => {
+  const textarea = descRef.current;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = description;
+  
+  const newText = text.substring(0, start) + emoji + text.substring(end);
+  setDescription(newText);
+  
+  // Update cursor position after emoji
+  requestAnimationFrame(() => {
+    if (textarea) {
+      const newPosition = start + emoji.length;
       textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = start + emoji.native.length;
-    }, 0);
-  };
+      textarea.setSelectionRange(newPosition, newPosition);
+    }
+  });
+};
+
   // Validate all fields
   const validateAll = () => {
     const newErrors: typeof errors = {};
@@ -124,11 +141,9 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
     // Validate name
     if (!name.trim()) {
       newErrors.name = "Tên sản phẩm không được để trống.";
-    } else if (name.length < 15) {
-      newErrors.name = "Tên sản phẩm phải từ 15 ký tự.";
+    } else if (name.length < 5) {
+      newErrors.name = "Tên sản phẩm phải từ 5 ký tự.";
     }
-
-    // Không validate categoryId
 
     // Validate description
     if (!description.trim()) {
@@ -137,18 +152,10 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
       newErrors.description = "Mô tả phải từ 10 ký tự.";
     }
 
-    // Validate price
-    if (!priceIn.trim()) {
-      newErrors.priceIn = "Giá nhập không được để trống.";
-    } else if (isNaN(Number(priceIn)) || Number(priceIn) < 0) {
-      newErrors.priceIn = "Giá nhập phải là số dương.";
-    }
-
     // Validate variants
     if (!variants.length) {
       newErrors.variants = "Vui lòng thêm ít nhất 1 phân loại.";
     } else {
-      const priceInNumber = Number(priceIn);
       for (const v of variants) {
         if (!v.size || !v.color) {
           newErrors.variants = "Mỗi phân loại phải có size và màu.";
@@ -158,17 +165,20 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
           newErrors.variants = "Số lượng phải là số >= 0.";
           break;
         }
-        if (v.price < 0 || isNaN(Number(v.price))) {
-          newErrors.variants = "Giá phải là số >= 0.";
+        if (v.priceIn < 0 || isNaN(Number(v.priceIn))) {
+          newErrors.variants = "Giá nhập phải là số >= 0.";
           break;
         }
-        // Validate giá variant >= giá nhập
-        if (!isNaN(priceInNumber) && v.price < priceInNumber) {
-          newErrors.variants = "Giá bán của mỗi phân loại không được nhỏ hơn giá nhập!";
+        if (v.price < 0 || isNaN(Number(v.price))) {
+          newErrors.variants = "Giá bán phải là số >= 0.";
+          break;
+        }
+        if (v.price < v.priceIn) {
+          newErrors.variants = "Giá bán không được nhỏ hơn giá nhập!";
           break;
         }
       }
-}
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -197,7 +207,6 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
       formData.append("name", name);
       formData.append("category_id", categoryId);
       formData.append("description", description);
-      formData.append("priceIn", priceIn);
       formData.append("variants", JSON.stringify(variants));
 
       imageSlots.forEach((file) => {
@@ -324,67 +333,40 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
           </div>
 
           {/* Mô tả */}
-          <div>
-            <div className="flex items-center mb-2">
-              <label className="font-semibold text-base">Mô tả sản phẩm</label>
-              <button
-                type="button"
-                className="ml-2 text-xl"
-                onClick={() => setShowEmoji((v) => !v)}
-                title="Chèn emoji"
-              >
-                😊
-              </button>
-              {errors.description && <Tooltip message={errors.description} />}
-            </div>
-            <div className="relative">
-              <textarea
-                ref={descRef}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-                rows={4}
-                placeholder="✍️ Nhập mô tả chi tiết sản phẩm (có thể dùng emoji 😊)"
-                className={`w-full rounded-lg border px-4 py-3 resize-y focus:outline-none focus:ring-2 shadow transition ${
-                  errors.description
-                    ? "border-red-400 focus:ring-red-200"
-                    : "border-orange-200 focus:ring-orange-300"
-                }`}
-              />
-              {showEmoji && (
-                <div className="absolute z-50 top-full left-0 mt-2">
-                  <Picker
-                    data={data}
-                    onEmojiSelect={handleSelectEmoji}
-                    theme="light"
-                    previewPosition="none"
-                    locale="vi"
-                  />
-                </div>
-              )}
-            </div>
+          <div className="flex items-center mb-2">
+            <label className="font-semibold text-base">Mô tả sản phẩm</label>
+            <button
+              type="button"
+              ref={emojiBtnRef}
+              className="ml-2 text-xl"
+              onClick={openEmojiPicker}
+              title="Chèn emoji"
+            >
+              😊
+            </button>
+            {errors.description && <Tooltip message={errors.description} />}
           </div>
-
-          {/* Giá nhập */}
-          <div>
-            <div className="flex items-center mb-2">
-              <label className="font-semibold text-base">Giá nhập (VNĐ)</label>
-              {errors.priceIn && <Tooltip message={errors.priceIn} />}
-            </div>
-            <input
-              type="number"
-              min={1000}
-              step={1000}
-              value={priceIn}
-              onChange={(e) => setPriceIn(e.target.value)}
-              placeholder="Nhập giá nhập"
+          <div className="relative">
+            <textarea
+              ref={descRef}
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setCursorPos(e.target.selectionStart);
+              }}
+              onSelect={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                setCursorPos(target.selectionStart);
+              }}
               required
-              className={`w-full rounded-lg border px-4 py-3 focus:outline-none focus:ring-2 shadow transition ${
-                errors.priceIn
+              rows={4}
+              placeholder="✍️ Nhập mô tả chi tiết sản phẩm (có thể dùng emoji 😊)"
+              className={`w-full rounded-lg border px-4 py-3 resize-y focus:outline-none focus:ring-2 shadow transition ${
+                errors.description
                   ? "border-red-400 focus:ring-red-200"
                   : "border-orange-200 focus:ring-orange-300"
               }`}
-            />
+/>
           </div>
 
           {/* Variant */}
@@ -428,7 +410,6 @@ const AddProduct: React.FC<AddProductProps> = ({ onClose }) => {
         </form>
       </div>
     </div>
-
   );
 };
 

@@ -6,9 +6,11 @@ import {
   PencilIcon,
   AdjustmentsHorizontalIcon,
   DocumentArrowDownIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import AddProduct from "../dialog/addProduct";
 import EditProduct from "../dialog/editProduct";
+import ProductInfo from "../dialog/productInfo";
 import { API_PRODUCT_MANAGER } from "../../config";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -39,6 +41,7 @@ const ProductManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [infoProductId, setInfoProductId] = useState<string | null>(null);
 
   const [statusMenu, setStatusMenu] = useState({
     visible: false,
@@ -205,7 +208,6 @@ const ProductManagement: React.FC = () => {
             <DocumentArrowDownIcon className="w-5 h-5" />
             Xuất Excel
           </button>
-
           <button
             onClick={exportToPDF}
             className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 flex items-center gap-1"
@@ -254,6 +256,7 @@ const ProductManagement: React.FC = () => {
         <table className="min-w-full text-sm text-left">
           <thead className="bg-gray-100 text-gray-700">
             <tr>
+              <th className="p-3">Thông tin</th>
               <th className="p-3">ID</th>
               <th className="p-3">Tên</th>
               <th className="p-3">Phân loại</th>
@@ -264,55 +267,71 @@ const ProductManagement: React.FC = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredProducts.map(p => {
+            {filteredProducts.map((p, idx) => {
               const shortId = p.id.slice(-5);
               const editDisabled = p.discount > 0;
               const isOutOfStock = p.status === "het_hang";
+              const rowClass = isOutOfStock
+                ? "bg-yellow-100 font-bold text-red-600 animate-pulse"
+                : idx % 2 === 1
+                ? "bg-gray-200"
+                : "";
+
               return (
-                <tr
-                  key={p.id}
-                  className={
-                    isOutOfStock
-                      ? "bg-yellow-100 font-bold text-red-600 animate-pulse"
-                      : "hover:bg-gray-50"
-                  }
-                >
-                  <td className="p-3 flex items-center gap-1">
-                    ...{shortId}
-                    <button onClick={() => handleCopyId(p.id)}>
-                      <ClipboardDocumentIcon className="h-4 w-4 text-[#ff8000]" />
+                <tr key={p.id} className={rowClass + " hover:bg-gray-100"}>
+                  <td className="p-3">
+                    <button
+                      onClick={() => setInfoProductId(p.id)}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      <InformationCircleIcon className="h-5 w-5" />
                     </button>
                   </td>
-                  <td className="p-3 font-medium flex items-center gap-1">
-                    {p.name}
-                    {isOutOfStock && (
-                      <span title="Hết hàng" className="ml-1">
-                        <svg className="inline h-5 w-5 text-red-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
-                        </svg>
-                      </span>
-                    )}
+                  <td className="p-3">
+                    <div className="flex items-center gap-1">
+                      ...{shortId}
+                      <button onClick={() => handleCopyId(p.id)}>
+                        <ClipboardDocumentIcon className="h-4 w-4 text-[#ff8000]" />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="p-3 font-medium">
+                    <div className="flex items-center gap-1">
+                      {p.name}
+                      {isOutOfStock && (
+                        <span title="Hết hàng" className="ml-1">
+                          <svg className="inline h-5 w-5 text-red-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                          </svg>
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-3">{p.category}</td>
-                  <td className="p-3 flex justify-between items-center">
-                    <span>{formatPrice(p.price)}</span>
-                    {p.discount > 0 && (
-                      <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-600 text-xs font-semibold rounded">Sale {p.discount}%</span>
-                    )}
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span>{formatPrice(p.price)}</span>
+                      {p.discount > 0 && (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-semibold rounded">Sale {p.discount}%</span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-3">{p.totalQuantity}</td>
                   <td className="p-3">{mapStatus(p.status)}</td>
-                  <td className="p-3 flex gap-2">
-                    <button onClick={e => openStatusMenu(e, p)} className="p-1 hover:bg-blue-100 rounded">
-                      <AdjustmentsHorizontalIcon className="h-5 w-5 text-blue-500" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenEdit(p.id)}
-                      disabled={editDisabled}
-                      className={`p-1 rounded ${editDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-green-100"}`}
-                    >
-                      <PencilIcon className="h-5 w-5 text-green-500" />
-                    </button>
+                  <td className="p-3">
+                    <div className="flex gap-2">
+                      <button onClick={e => openStatusMenu(e, p)} className="p-1 hover:bg-blue-100 rounded">
+                        <AdjustmentsHorizontalIcon className="h-5 w-5 text-blue-500" />
+                      </button>
+                      {!p.discount && (
+                        <button
+                          onClick={() => handleOpenEdit(p.id)}
+                          className="p-1 hover:bg-green-100 rounded"
+                        >
+                          <PencilIcon className="h-5 w-5 text-green-500" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -361,6 +380,13 @@ const ProductManagement: React.FC = () => {
             }}
           />
         </div>
+      )}
+
+      {infoProductId && (
+        <ProductInfo
+          productId={infoProductId}
+          onClose={() => setInfoProductId(null)}
+        />
       )}
     </div>
   );

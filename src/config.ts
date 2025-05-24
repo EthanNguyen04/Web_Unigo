@@ -1,7 +1,7 @@
 // config.ts
 
 // Địa chỉ base của API
-export const BASE_URL = "http://192.168.1.6:3001";
+export const BASE_URL = "http://192.168.1.2:3001";
 
 // Các endpoint liên quan
 export const API_ADD_PRODUCT = `${BASE_URL}/manager/add_product`;
@@ -36,6 +36,9 @@ export const Add_staff = `${BASE_URL}/manager/add_staff`;
 export const get_order = `${BASE_URL}/manager/orders`;
 export const change_status_order = `${BASE_URL}/manager/orders/status`;
 export const delete_staff = `${BASE_URL}/manager/delete_staff`;
-export const Get_Stats = `${BASE_URL}/manager/stats/daily-sales`;
+export const Get_Stats_Daily = `${BASE_URL}/manager/stats_daily`;
+
+export const Get_Stats = `${BASE_URL}/manager/stats`;
+
 
 // Các biến/config khác có thể thêm vào đây

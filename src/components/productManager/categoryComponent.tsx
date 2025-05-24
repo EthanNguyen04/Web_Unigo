@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  API_Get_CATEGORY,    // = `${BASE_URL}/manager/getCategories`
-  Post_ADD_category,   // = `${BASE_URL}/manager/createCategory`
-  Edit_category        // = `${BASE_URL}/manager/edit_category`
+  API_Get_CATEGORY,
+  Post_ADD_category,
+  Edit_category
 } from "../../config";
 
 interface Category {
@@ -18,10 +18,18 @@ interface ApiResponse {
   category?: Category;
 }
 
+// Hàm chuyển tên về dạng "Áo Nam"
+function toTitleCase(str: string) {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 const CategoryManagement: React.FC = () => {
-  // dữ liệu gốc từ API
   const [categories, setCategories] = useState<Category[]>([]);
-  // trạng thái UI
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
 
@@ -66,7 +74,8 @@ const CategoryManagement: React.FC = () => {
     e.preventDefault();
     setAddError(null);
     setAddSuccess(null);
-    if (!newName.trim()) {
+    const formattedName = toTitleCase(newName.trim());
+    if (!formattedName) {
       setAddError("Tên phân loại không được để trống");
       return;
     }
@@ -79,7 +88,7 @@ const CategoryManagement: React.FC = () => {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ name: newName.trim() })
+        body: JSON.stringify({ name: formattedName })
       });
       const data = (await res.json()) as ApiResponse;
       if (!res.ok) throw new Error(data.message || `Server returned ${res.status}`);
@@ -98,7 +107,8 @@ const CategoryManagement: React.FC = () => {
   const handleEdit = async (cat: Category) => {
     if (cat.status) return; // chỉ sửa khi đang không hoạt động
     const nameInput = window.prompt("Nhập tên mới cho phân loại:", cat.name);
-    if (!nameInput?.trim() || nameInput.trim() === cat.name) return;
+    const formattedName = nameInput ? toTitleCase(nameInput.trim()) : "";
+    if (!formattedName || formattedName === cat.name) return;
 
     try {
       const token = localStorage.getItem("tkn");
@@ -108,7 +118,7 @@ const CategoryManagement: React.FC = () => {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ name: nameInput.trim() })
+        body: JSON.stringify({ name: formattedName })
       });
       const data = (await res.json()) as ApiResponse;
       if (!res.ok) throw new Error(data.message || `Server returned ${res.status}`);
@@ -144,7 +154,7 @@ const CategoryManagement: React.FC = () => {
           type="text"
           placeholder="Tên phân loại mới"
           value={newName}
-          onChange={e => setNewName(e.target.value)}
+          onChange={e => setNewName(toTitleCase(e.target.value))}
           className="border border-orange-400 focus:border-orange-600 focus:ring-2 focus:ring-orange-300 rounded-lg px-4 py-3 w-full md:flex-1 transition"
           disabled={adding}
         />
