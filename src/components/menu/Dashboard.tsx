@@ -37,84 +37,38 @@ const COLORS = [
 const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const sampleData = {
-      totalOrders: 1280,
-      pendingOrders: 120,
-      sellingProducts: 350,
-      outOfStockProducts: 50,
-      stoppedProducts: 20,
-      revenue: "145,000,000đ",
-      revenueChange: 12.5,
-      activeUsers: 980,
-      pendingUsers: 45,
-      topProducts: [
-        { name: "Áo sơ mi", sales: 250 },
-        { name: "Quần jeans", sales: 230 },
-        { name: "Giày sneaker", sales: 220 },
-        { name: "Áo khoác", sales: 210 },
-        { name: "Balo du lịch", sales: 200 },
-        { name: "Áo thun", sales: 190 },
-        { name: "Mũ lưỡi trai", sales: 180 },
-        { name: "Kính râm", sales: 170 },
-        { name: "Túi xách", sales: 160 },
-        { name: "Giày boot", sales: 150 },
-      ],
-      revenueByCategory: [
-        { name: "Thời trang", value: 40000000 },
-        { name: "Giày dép", value: 30000000 },
-        { name: "Phụ kiện", value: 20000000 },
-        { name: "Đồ du lịch", value: 15000000 },
-      ],
-      weakestProducts: [
-        {
-          name: "Túi đeo chéo",
-          image: "https://via.placeholder.com/40",
-          percent: 5,
-        },
-        {
-          name: "Khăn len",
-          image: "https://via.placeholder.com/40",
-          percent: 8,
-        },
-        {
-          name: "Găng tay",
-          image: "https://via.placeholder.com/40",
-          percent: 10,
-        },
-      ],
-      strongestProducts: [
-        {
-          name: "Áo hoodie",
-          image: "https://via.placeholder.com/40",
-          percent: 95,
-        },
-        {
-          name: "Quần thể thao",
-          image: "https://via.placeholder.com/40",
-          percent: 92,
-        },
-        {
-          name: "Áo thun nam",
-          image: "https://via.placeholder.com/40",
-          percent: 90,
-        },
-      ],
-    };
-
-    setStats(sampleData);
-    setLoading(false);
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(API_dashboard);
+      const token = localStorage.getItem("tkn");
+      if (!token) {
+        throw new Error("Không tìm thấy token xác thực");
+      }
+
+      const res = await fetch(API_dashboard, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Lỗi server: ${res.status}`);
+      }
+
       const data = await res.json();
+      if (!data) {
+        throw new Error("Không nhận được dữ liệu từ server");
+      }
       setStats(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching stats:", error);
+      setError(error.message || "Có lỗi xảy ra khi tải dữ liệu");
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -152,24 +106,43 @@ const Dashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-[#2563eb]">Dashboard</h2>
+          <button
+            onClick={fetchStats}
+            className="bg-[#2563eb] text-white px-4 py-2 rounded hover:bg-[#1e40af] transition"
+          >
+            Thử lại
+          </button>
+        </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Lỗi: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      </div>
+    );
+  }
+
   const dashboardStats = [
     {
       title: "Tổng đơn hàng",
       content: (
         <>
-          <p className="text-gray-600">Tổng: {stats.totalOrders}</p>
-          <p className="text-gray-600">Chờ giao: {stats.pendingOrders}</p>
+          <p className="text-gray-600">Tổng: {stats?.totalOrders || 0}</p>
+          <p className="text-gray-600">Chờ giao: {stats?.pendingOrders || 0}</p>
         </>
       ),
       icon: ShoppingCartIcon,
     },
     {
-      title: "Sản phẩm có sẵn",
+      title: "Sản phẩm",
       content: (
         <>
-          <p className="text-gray-600">Đang bán: {stats.sellingProducts}</p>
-          <p className="text-gray-600">Hết hàng: {stats.outOfStockProducts}</p>
-          <p className="text-gray-600">Ngừng bán: {stats.stoppedProducts}</p>
+          <p className="text-gray-600">Đang bán: {stats?.sellingProducts || 0}</p>
+          <p className="text-gray-600">Hết hàng: {stats?.outOfStockProducts || 0}</p>
         </>
       ),
       icon: CubeIcon,
@@ -178,15 +151,7 @@ const Dashboard = () => {
       title: "Doanh thu tháng",
       content: (
         <>
-          <p className="text-gray-600">{stats.revenue}</p>
-          {typeof stats.revenueChange === "number" && (
-            <p
-              className={`text-sm font-semibold mt-1 ${stats.revenueChange >= 0 ? "text-green-600" : "text-red-600"
-                }`}
-            >
-              {stats.revenueChange >= 0 ? "▲" : "▼"} {Math.abs(stats.revenueChange)}%
-            </p>
-          )}
+          <p className="text-gray-600">{stats?.revenue ? `${stats.revenue.toLocaleString('vi-VN')}đ` : '0đ'}</p>
         </>
       ),
       icon: CurrencyDollarIcon,
@@ -195,8 +160,9 @@ const Dashboard = () => {
       title: "Người dùng đăng ký",
       content: (
         <>
-          <p className="text-gray-600">Đã xác minh: {stats.activeUsers}</p>
-          <p className="text-gray-600">Chờ xác minh: {stats.pendingUsers}</p>
+          <p className="text-gray-600">Đã xác minh: {stats?.activeUsers || 0}</p>
+          <p className="text-gray-600">Chờ xác minh: {stats?.pendingUsers || 0}</p>
+          <p className="text-gray-600">Đã khóa: {stats?.disabledUsers || 0}</p>
         </>
       ),
       icon: UsersIcon,
