@@ -14,8 +14,6 @@ import EditProduct from "../dialog/editProduct";
 import ProductInfo from "../dialog/productInfo";
 import { API_PRODUCT_MANAGER , patch_discount} from "../../config";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 
 interface Product {
   id: string;
@@ -78,7 +76,10 @@ const ProductManagement: React.FC = () => {
       products.filter(p => {
         if (statusFilter !== "all" && p.status !== statusFilter) return false;
         if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
-        if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        if (searchQuery) {
+          const searchLower = searchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(searchLower) || p.id.toLowerCase().includes(searchLower);
+        }
         return true;
       }),
     [products, statusFilter, categoryFilter, searchQuery]
@@ -228,43 +229,6 @@ const ProductManagement: React.FC = () => {
     XLSX.writeFile(workbook, "san_pham.xlsx");
   };
 
-  const exportToPDF = () => {
-    if (products.length === 0) {
-      alert("Không có dữ liệu để xuất.");
-      return;
-    }
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Danh sách sản phẩm", 14, 22);
-
-    const tableColumn = ["ID", "Tên", "Phân loại", "Giá", "Kho", "Trạng thái", "Giảm giá"];
-    const tableRows: (string | number)[][] = [];
-
-    products.forEach((p) => {
-      const rowData = [
-        p.id,
-        p.name,
-        p.category,
-        p.price,
-        p.totalQuantity,
-        mapStatus(p.status),
-        p.discount > 0 ? `${p.discount}%` : "Không",
-      ];
-      tableRows.push(rowData);
-    });
-
-    // @ts-ignore
-    doc.autoTable({
-      startY: 30,
-      head: [tableColumn],
-      body: tableRows,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [255, 136, 0] },
-    });
-
-    doc.save("san_pham.pdf");
-  };
-
   return (
     <div className="relative p-6 border border-[#ff8000] bg-white rounded-xl shadow" onClick={closeDiscountMenu}>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
@@ -276,13 +240,6 @@ const ProductManagement: React.FC = () => {
           >
             <DocumentArrowDownIcon className="w-5 h-5" />
             Xuất Excel
-          </button>
-          <button
-            onClick={exportToPDF}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 flex items-center gap-1"
-          >
-            <DocumentArrowDownIcon className="w-5 h-5" />
-            Xuất PDF
           </button>
           <button
             onClick={() => setShowAddProduct(true)}

@@ -29,38 +29,54 @@ interface Order {
   products: Product[];
   rawTotal: number;
   purchaseTotal: number;
+  cancellation_reason?: string;
+  createdAt: string;
 }
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
-  da_huy: "Đã hủy",
+  huy: "Đã hủy",
 };
-
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  chua_thanh_toan: "Chưa thanh toán",
-  da_thanh_toan: "Đã thanh toán",
-};
-
-const tabs = [
-  { key: "da_thanh_toan", label: PAYMENT_STATUS_LABEL.da_thanh_toan },
-  { key: "chua_thanh_toan", label: PAYMENT_STATUS_LABEL.chua_thanh_toan },
-];
 
 const CanceledOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>(tabs[0].key);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("tkn");
-      const res = await fetch(`${get_order}?status=da_huy`, {
-        headers: { Authorization: `Bearer ${token}` },
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const res = await fetch(`${get_order}?status=huy`, {
+        method: 'GET',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
       });
+
       const data = await res.json();
-      setOrders(data.orders || []);
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch orders');
+      }
+
+      // Filter out any orders with null product data
+      const validOrders = data.orders.filter((order: Order) => 
+        order.products && 
+        order.products.every((product: Product) => 
+          product && 
+          product.firstImage !== null && 
+          product.name
+        )
+      );
+
+      setOrders(validOrders);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching orders:', err);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -70,13 +86,11 @@ const CanceledOrders: React.FC = () => {
     fetchOrders();
   }, []);
 
-  const filtered = orders.filter((o) => o.payment_status === activeTab);
-
   if (loading) return <div className="text-center py-10 text-gray-500">Đang tải đơn hàng…</div>;
-  if (!filtered.length)
+  if (!orders.length)
     return (
       <div className="text-center text-gray-400 py-10 italic">
-        Không có đơn {PAYMENT_STATUS_LABEL[activeTab].toLowerCase()}.
+        Không có đơn hàng đã hủy.
       </div>
     );
 
@@ -85,27 +99,11 @@ const CanceledOrders: React.FC = () => {
       {/* Header Section */}
       <div className="bg-white rounded-2xl shadow-sm p-6 mb-8 sticky top-0 z-10">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Đơn hàng đã hủy</h1>
-        
-        {/* Tabs */}
-        <div className="flex gap-4">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105
-                ${activeTab === t.key
-                  ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-200"
-                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 shadow-sm"}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Orders */}
       <div className="space-y-8">
-        {filtered.map((o, index) => (
+        {orders.map((o, index) => (
           <div
             key={o.orderId}
             className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 
@@ -118,14 +116,6 @@ const CanceledOrders: React.FC = () => {
                   <h3 className="font-bold text-xl text-gray-900">📦 Mã đơn: {o.orderId}</h3>
                   <p className="text-sm text-gray-500 mt-1">User ID: {o.user_id}</p>
                 </div>
-                <span
-                  className={`px-4 py-2 text-sm rounded-xl font-medium shadow-sm
-                    ${o.payment_status === "da_thanh_toan"
-                      ? "bg-red-50 text-red-700 border border-red-200"
-                      : "bg-red-50 text-red-700 border border-red-200"}`}
-                >
-                  {PAYMENT_STATUS_LABEL[o.payment_status]}
-                </span>
               </div>
             </div>
 
@@ -152,6 +142,16 @@ const CanceledOrders: React.FC = () => {
                   <p className="text-gray-500 text-sm mb-1">Thanh toán</p>
                   <p className="font-medium text-red-600">{o.purchaseTotal.toLocaleString()}₫</p>
                 </div>
+                <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                  <p className="text-gray-500 text-sm mb-1">Thời gian đặt</p>
+                  <p className="font-medium">{new Date(o.createdAt).toLocaleString('vi-VN')}</p>
+                </div>
+                {o.cancellation_reason && (
+                  <div className="bg-red-50 p-4 rounded-xl border border-red-100 col-span-2 md:col-span-3">
+                    <p className="text-gray-500 text-sm mb-1">Lý do hủy</p>
+                    <p className="font-medium text-red-600">{o.cancellation_reason}</p>
+                  </div>
+                )}
               </div>
 
               {/* Products */}
