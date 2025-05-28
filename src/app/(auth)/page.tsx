@@ -19,6 +19,7 @@ export default function Login() {
   const [isSending, setIsSending] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
+  const [isCheckingToken, setIsCheckingToken] = useState(true);
   const router = useRouter();
 
   // Kiểm tra token khi trang được tải hoặc làm mới
@@ -50,6 +51,7 @@ export default function Login() {
       } else {
         router.replace("/");
       }
+      setIsCheckingToken(false);
     };
 
     checkToken();
@@ -184,6 +186,12 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      {isCheckingToken && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>Đang kiểm tra phiên đăng nhập...</p>
+        </div>
+      )}
       {/* Cột trái: Hình nền */}
       <div className="login-left">
         <Image
@@ -247,7 +255,7 @@ export default function Login() {
             <button
               type="submit"
               className="submit-btn"
-              disabled={isLoggingIn}
+              disabled={isLoggingIn || !otp.trim()}
             >
               {isLoggingIn ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
@@ -261,100 +269,179 @@ export default function Login() {
           display: flex;
           min-height: 100vh;
           width: 100%;
+          background: linear-gradient(135deg, #fff5e6 0%, #fff 100%);
         }
         .login-left {
           flex: 1;
           position: relative;
           overflow: hidden;
+          box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
         }
         .login-right {
-          width: 70%;
-          margin-left: -50px;
+          width: 65%;
+          margin-left: -30px;
           position: relative;
           z-index: 2;
-          background-color: #ff8000;
+          background: linear-gradient(135deg, #ff8000 0%, #ff6b00 100%);
           display: flex;
           align-items: center;
           justify-content: center;
-          border-top-left-radius: 20px;
-          border-bottom-left-radius: 20px;
+          border-top-left-radius: 30px;
+          border-bottom-left-radius: 30px;
+          box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
         }
         .form-wrapper {
-          width: 80%;
-          max-width: 500px;
+          width: 85%;
+          max-width: 450px;
           background-color: #fff;
-          padding: 24px;
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          padding: 32px;
+          border-radius: 16px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
           text-align: center;
         }
         .logo-section {
-          margin-bottom: 16px;
+          margin-bottom: 24px;
         }
         .logo-img {
           position: relative;
-          width: 30%;
+          width: 35%;
           aspect-ratio: 1;
-          margin: 0 auto 8px;
+          margin: 0 auto 16px;
+          filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
         }
         h2 {
-          font-weight: 600;
+          font-weight: 700;
           margin: 0;
           color: #ff8000;
-          font-size: 24px;
+          font-size: 28px;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .login-form {
           display: flex;
           flex-direction: column;
           text-align: left;
+          gap: 16px;
         }
         label {
           color: #ff8000;
-          margin-top: 8px;
-          font-weight: 500;
+          font-weight: 600;
+          font-size: 14px;
+          margin-bottom: 4px;
+          display: block;
         }
         input {
-          color: #797780;
-          margin-top: 4px;
-          padding: 8px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
+          color: #333;
+          padding: 12px 16px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 14px;
+          transition: all 0.3s ease;
+          background-color: #f8f8f8;
+        }
+        input:focus {
+          outline: none;
+          border-color: #ff8000;
+          box-shadow: 0 0 0 3px rgba(255, 128, 0, 0.1);
+          background-color: #fff;
         }
         .otp-group {
           display: flex;
-          gap: 8px;
+          gap: 12px;
         }
         .otp-group input {
           flex: 1;
         }
         .otp-btn {
-          background-color: #ff6b00;
+          background: linear-gradient(135deg, #ff8000 0%, #ff6b00 100%);
           color: #fff;
           border: none;
-          border-radius: 4px;
-          padding: 0 12px;
+          border-radius: 8px;
+          padding: 0 20px;
           cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+          min-width: 120px;
         }
         .otp-btn:hover {
-          opacity: 0.9;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(255, 107, 0, 0.2);
+        }
+        .otp-btn:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
         }
         .submit-btn {
-          margin-top: 16px;
-          padding: 12px;
-          background-color: #ff6b00;
+          margin-top: 8px;
+          padding: 14px;
+          background: linear-gradient(135deg, #ff8000 0%, #ff6b00 100%);
           color: #fff;
           font-weight: 600;
+          font-size: 16px;
           border: none;
-          border-radius: 4px;
+          border-radius: 8px;
           cursor: pointer;
+          transition: all 0.3s ease;
         }
-        .submit-btn:hover {
-          opacity: 0.9;
+        .submit-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(255, 107, 0, 0.2);
+        }
+        .submit-btn:disabled {
+          background: #e0e0e0;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+          opacity: 0.7;
         }
         p {
-          margin-top: 16px;
-          color: rgb(0, 26, 255);
+          margin-top: 20px;
+          color: #0066ff;
           text-align: center;
+          font-size: 14px;
+          font-weight: 500;
+          padding: 8px;
+          border-radius: 6px;
+          background-color: rgba(0, 102, 255, 0.1);
+        }
+        .loading-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(255, 255, 255, 0.9);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .loading-spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #ff8000;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .loading-overlay p {
+          color: #ff8000;
+          font-size: 16px;
+          font-weight: 500;
+          margin: 0;
+          background: none;
         }
       `}</style>
     </div>
