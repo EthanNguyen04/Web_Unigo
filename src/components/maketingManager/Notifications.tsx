@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Post_notification, Get_Noti } from "../../config";
-import { FiPlusCircle, FiX, FiSend, FiLoader } from "react-icons/fi";
+import { FiPlusCircle, FiX, FiSend, FiLoader, FiCopy, FiCheck } from "react-icons/fi";
 
 interface NotificationItem {
   title: string;
   message: string;
   time: string;
+  user_id?: string;
+  order_id?: string;
 }
 
 // Simple Toast Component
@@ -29,18 +31,32 @@ const Notifications: React.FC = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const showError = (msg: string) => setToastMsg(msg);
+
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      showError("Không thể sao chép: " + err);
+    }
+  };
 
   const fetchNoti = async () => {
     try {
       const res = await fetch(`${Get_Noti}?type=user`);
       const data = await res.json();
+      console.log("Notification:", JSON.stringify(data.notifications, null, 2));
       if (data.notifications) {
         const list: NotificationItem[] = data.notifications.map((n: any) => ({
           title: n.title,
           message: n.content,
-          time: new Date(n.time).toLocaleString("vi-VN", { hour12: false }),
+          time: n.time || "N/A",
+          user_id: n.user_id,
+          order_id: n.order_id,
         }));
         setNotifications(list);
       }
@@ -129,8 +145,42 @@ const Notifications: React.FC = () => {
                 className="hover:bg-green-50 transition cursor-default"
                 title={`${n.title} - ${n.message}`}
               >
-                <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-700">{n.title}</td>
-                <td className="px-6 py-4 whitespace-pre-wrap max-w-xl">{n.message}</td>
+                <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {n.title}
+                    {n.order_id && (
+                      <button
+                        onClick={() => copyToClipboard(n.order_id!, `order-${idx}`)}
+                        className="p-1 hover:bg-gray-100 rounded transition"
+                        title="Sao chép mã đơn hàng"
+                      >
+                        {copiedId === `order-${idx}` ? (
+                          <FiCheck className="text-green-500" size={16} />
+                        ) : (
+                          <FiCopy className="text-gray-500" size={16} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-pre-wrap max-w-xl">
+                  <div className="flex items-center gap-2">
+                    {n.message}
+                    {n.user_id && (
+                      <button
+                        onClick={() => copyToClipboard(n.user_id!, `user-${idx}`)}
+                        className="p-1 hover:bg-gray-100 rounded transition"
+                        title="Sao chép mã người dùng"
+                      >
+                        {copiedId === `user-${idx}` ? (
+                          <FiCheck className="text-green-500" size={16} />
+                        ) : (
+                          <FiCopy className="text-gray-500" size={16} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{n.time}</td>
               </tr>
             ))}
