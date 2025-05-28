@@ -29,6 +29,7 @@ interface Order {
   products: Product[];
   rawTotal: number;
   purchaseTotal: number;
+  createdAt: string;
 }
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
@@ -189,9 +190,13 @@ const DeliveredOrders: React.FC = () => {
                     <p className="text-gray-500 text-sm mb-1">Giá gốc</p>
                     <p className="font-medium text-green-600">{o.rawTotal.toLocaleString()}₫</p>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
                     <p className="text-gray-500 text-sm mb-1">Thanh toán</p>
                     <p className="font-medium text-green-600">{o.purchaseTotal.toLocaleString()}₫</p>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                    <p className="text-gray-500 text-sm mb-1">Thời gian đặt</p>
+                    <p className="font-medium">{new Date(o.createdAt).toLocaleString('vi-VN')}</p>
                   </div>
                 </div>
 
