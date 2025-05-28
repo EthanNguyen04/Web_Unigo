@@ -154,7 +154,7 @@ const CategoryManagement: React.FC = () => {
           type="text"
           placeholder="Tên phân loại mới"
           value={newName}
-          onChange={e => setNewName(toTitleCase(e.target.value))}
+          onChange={e => setNewName(e.target.value)}
           className="border border-orange-400 focus:border-orange-600 focus:ring-2 focus:ring-orange-300 rounded-lg px-4 py-3 w-full md:flex-1 transition"
           disabled={adding}
         />

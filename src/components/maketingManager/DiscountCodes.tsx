@@ -78,12 +78,14 @@ const DiscountCodes: React.FC = () => {
   useEffect(() => { fetchDiscounts(); }, []);
 
   // Filtered list
-  const filtered = discountCodes.filter(d => {
-    const exp = toVietnamDate(d.expiration_date);
-    if (filter === 'active') return exp >= vnNow;
-    if (filter === 'expired') return exp < vnNow;
-    return true;
-  });
+  const filtered = discountCodes
+    .filter(d => {
+      const exp = toVietnamDate(d.expiration_date);
+      if (filter === 'active') return exp >= vnNow;
+      if (filter === 'expired') return exp < vnNow;
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // Dialog openers
   const openAddDialog = () => {
@@ -218,10 +220,12 @@ const DiscountCodes: React.FC = () => {
                 </td>
               </tr>
             )}
-            {filtered.map(d => (
+            {filtered.map((d, index) => (
               <tr
                 key={d.code}
-                className="hover:bg-gray-50 transition-colors duration-150 cursor-default"
+                className={`hover:bg-gray-100 transition-colors duration-150 cursor-default ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-blue-100'
+                }`}
               >
                 <td className="p-3 border border-gray-300">{d.code}</td>
                 <td className="p-3 border border-gray-300">{d.discount_percent}%</td>

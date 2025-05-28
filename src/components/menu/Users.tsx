@@ -21,6 +21,7 @@ const Users: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("admin");
+  const [searchId, setSearchId] = useState("");
 
   const [showStaffDialog, setShowStaffDialog] = useState(false);
   const [staffEmail, setStaffEmail] = useState("");
@@ -77,7 +78,13 @@ const Users: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter((u) => u.role.toLowerCase() === activeTab);
+  const filteredUsers = users.filter((u) => {
+    const matchesRole = u.role.toLowerCase() === activeTab;
+    if (activeTab === "user" && searchId) {
+      return matchesRole && u._id.toLowerCase().includes(searchId.toLowerCase());
+    }
+    return matchesRole;
+  });
 
   const shortId = (id: string) => (id.length > 5 ? "..." + id.slice(-5) : id);
 
@@ -175,6 +182,18 @@ const Users: React.FC = () => {
           >
             + Thêm nhân viên
           </button>
+        </div>
+      )}
+
+      {activeTab === "user" && (
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo ID..."
+            value={searchId}
+            onChange={(e) => setSearchId(e.target.value)}
+            className="w-full md:w-64 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       )}
 

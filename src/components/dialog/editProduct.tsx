@@ -72,10 +72,8 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
       try {
         const res = await fetch(API_Get_CATEGORY);
         const data = await res.json();
-        const active = Array.isArray(data.categories)
-          ? data.categories.filter((c: Category) => c.status)
-          : [];
-        setCategories(active);
+        const allCategories = Array.isArray(data.categories) ? data.categories : [];
+        setCategories(allCategories);
       } catch (e) {
         console.error("Lỗi khi lấy danh mục:", e);
       }
@@ -179,6 +177,14 @@ const EditProduct: React.FC<EditProductProps> = ({ productId, onClose }) => {
         }
         if (v.price < 0 || isNaN(Number(v.price))) {
           newErrors.variants = "Giá phải là số >= 0.";
+          break;
+        }
+        if (v.price % 1000 !== 0) {
+          newErrors.variants = "Giá phải là bội số của 1000 (ví dụ: 50000, 51000).";
+          break;
+        }
+        if (v.priceIn > v.price) {
+          newErrors.variants = "Giá nhập không được cao hơn giá bán.";
           break;
         }
       }
